@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setupDatabase } from '@/lib/setup';
+import { initializeDatabase } from '@/lib/postgresql';
 
 export async function POST(request: NextRequest) {
   try {
-    const result = await setupDatabase();
+    await initializeDatabase();
     
-    if (result.success) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Database setup completed successfully!' 
-      });
-    } else {
-      return NextResponse.json({ 
-        success: false, 
-        error: result.error 
-      }, { status: 500 });
-    }
+    return NextResponse.json({ 
+      success: true, 
+      message: 'PostgreSQL database setup completed successfully!' 
+    });
   } catch (error) {
     console.error('Setup API error:', error);
     return NextResponse.json({ 

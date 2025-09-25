@@ -34,17 +34,22 @@ export default function InventoryPage() {
     setIsClient(true);
     const loadProducts = async () => {
       try {
+        setIsLoading(true);
         const productsData = await fetchProducts();
         setProducts(productsData);
         setLastUpdated(new Date());
       } catch (error) {
         console.error('Error loading products:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
+    
+    // Load data immediately
     loadProducts();
 
-    // Auto-refresh every 90 seconds
-    const interval = setInterval(loadProducts, 90000);
+    // Auto-refresh every 20 seconds for realtime inventory tracking
+    const interval = setInterval(loadProducts, 20000);
     return () => clearInterval(interval);
   }, []);
 
@@ -77,7 +82,7 @@ export default function InventoryPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const selectedProduct = products.find(p => p.id === newPurchase.productId);
+      const selectedProduct = products.find(p => p.id === parseInt(newPurchase.productId));
       const purchaseData = {
         productId: newPurchase.productId,
         productName: selectedProduct?.name || '',
@@ -128,11 +133,25 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Manajemen Stok</h1>
-          <p className="text-gray-900">Kelola produk dan stok inventori</p>
-          <p className="text-sm text-gray-900 mt-1">
-            Terakhir diperbarui: {lastUpdated.toLocaleString('id-ID')}
-          </p>
+          <h1 className="text-3xl font-bold text-amber-800">Manajemen Stok</h1>
+          <p className="text-amber-700">Kelola produk dan stok inventori real-time</p>
+        </div>
+        <div className="text-right">
+          <div className="flex items-center space-x-2">
+            {isLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+            )}
+            <div className="flex items-center text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+              Inventory Live
+            </div>
+          </div>
+          <div className="text-xs text-amber-600 mt-1">
+            Update: {lastUpdated.toLocaleTimeString('id-ID')}
+          </div>
+          <div className="text-xs text-amber-500 mt-0.5">
+            Auto-refresh 20 detik
+          </div>
         </div>
       </div>
 
@@ -231,22 +250,22 @@ export default function InventoryPage() {
                           {formatCurrency(product.price)}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.stock} / min: {product.minStock}
+                          {product.stock} / min: {product.min_stock}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                             product.stock <= 0 
                               ? 'bg-red-100 text-red-800' 
-                              : product.stock <= product.minStock
+                              : product.stock <= (product.min_stock || 0)
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-green-100 text-green-800'
                           }`}>
-                            {product.stock <= 0 ? 'Habis' : product.stock <= product.minStock ? 'Rendah' : 'Normal'}
+                            {product.stock <= 0 ? 'Habis' : product.stock <= (product.min_stock || 0) ? 'Rendah' : 'Normal'}
                           </span>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <button
-                            onClick={() => handleDeleteProduct(product.id)}
+                            onClick={() => handleDeleteProduct(product.id.toString())}
                             className="text-red-600 hover:text-red-900"
                           >
                             Hapus

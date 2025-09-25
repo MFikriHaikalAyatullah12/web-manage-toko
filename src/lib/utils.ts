@@ -1,12 +1,10 @@
 export const formatCurrency = (amount: number | null | undefined) => {
   // Handle null, undefined, or NaN values
-  const safeAmount = (amount === null || amount === undefined || isNaN(amount)) ? 0 : amount;
+  const safeAmount = (amount === null || amount === undefined || isNaN(amount)) ? 0 : Number(amount);
   
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(safeAmount);
+  // Format dengan separator ribuan manual
+  const formatted = Math.floor(safeAmount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `Rp ${formatted}`;
 };
 
 export const formatDate = (date: Date | string | null | undefined) => {

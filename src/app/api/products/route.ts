@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProducts, addProduct } from '@/lib/database';
+import { query, initializeDatabase } from '@/lib/postgresql';
+
+// Initialize database on first request
+let isInitialized = false;
+
+async function ensureInitialized() {
+  if (!isInitialized) {
+    await initializeDatabase();
+    isInitialized = true;
+  }
+}
 
 export async function GET() {
   try {
-    const products = await getProducts();
-    return NextResponse.json(products);
+    await ensureInitialized();
+    
+    const result = await query(`
+      SELECT id, name, price, stock, category, cost, min_stock, supplier, created_at, updated_at
+      FROM products 
+      ORDER BY name ASC
+    `);
+    
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Error getting products:', error);
     return NextResponse.json(
@@ -16,9 +33,25 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const product = await request.json();
-    const newProduct = await addProduct(product);
-    return NextResponse.json(newProduct);
+    await ensureInitialized();
+    
+    const body = await request.json();
+    const { name, price, stock, category, cost, minStock, supplier } = body;
+
+    if (!name || price === undefined || stock === undefined) {
+      return NextResponse.json(
+        { error: 'Missing required fields: name, price, stock' },
+        { status: 400 }
+      );
+    }
+
+    const result = await query(`
+      INSERT INTO products (name, category, price, cost, stock, min_stock, supplier, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      RETURNING id, name, category, price, cost, stock, min_stock, supplier, created_at, updated_at
+    `, [name, category || 'General', price, cost || 0, stock, minStock || 5, supplier || null]);
+
+    return NextResponse.json(result.rows[0]);
   } catch (error) {
     console.error('Error adding product:', error);
     return NextResponse.json(

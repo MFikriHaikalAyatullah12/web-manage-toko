@@ -13,18 +13,31 @@ export default function TransactionsPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [discount, setDiscount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadProducts = async () => {
       try {
+        setIsLoading(true);
         const productsData = await fetchProducts();
         setProducts(productsData);
+        setLastUpdated(new Date());
       } catch (error) {
         console.error('Error loading products:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
+    // Load products immediately
     loadProducts();
+    
+    // Set up auto-refresh every 30 seconds for realtime stock updates
+    const interval = setInterval(loadProducts, 30000);
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, []);
 
   const filteredProducts = products.filter(product =>
@@ -54,7 +67,7 @@ export default function TransactionsPage() {
     }
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (productId: number, quantity: number) => {
     if (quantity <= 0) {
       setCart(cart.filter(item => item.productId !== productId));
     } else {
@@ -66,7 +79,7 @@ export default function TransactionsPage() {
     }
   };
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = (productId: number) => {
     setCart(cart.filter(item => item.productId !== productId));
   };
 
@@ -128,9 +141,25 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Transaksi Penjualan</h1>
-        <p className="text-gray-900">Input penjualan produk</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-amber-800">Transaksi Penjualan</h1>
+          <p className="text-amber-700">Input penjualan produk dengan stok real-time</p>
+        </div>
+        <div className="text-right">
+          <div className="flex items-center space-x-2">
+            {isLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+            )}
+            <div className="flex items-center text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+              Stok Real-time
+            </div>
+          </div>
+          <div className="text-xs text-amber-600 mt-1">
+            Update terakhir: {lastUpdated.toLocaleTimeString('id-ID')}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

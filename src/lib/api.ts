@@ -131,8 +131,8 @@ export const createPurchase = async (purchase: {
 };
 
 // Chart data API
-export const fetchChartData = async (): Promise<ChartData[]> => {
-  const response = await fetch(`${API_BASE_URL}/chart`);
+export const fetchChartData = async (period: number = 7): Promise<ChartData[]> => {
+  const response = await fetch(`${API_BASE_URL}/chart?period=${period}`);
   if (!response.ok) {
     throw new Error('Failed to fetch chart data');
   }

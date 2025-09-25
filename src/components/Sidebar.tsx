@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useAuth } from './AuthProvider';
 
 // Simple SVG icons
 const HomeIcon = ({ className }: { className?: string }) => (
@@ -47,6 +48,18 @@ const XMarkIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const LogoutIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+  </svg>
+);
+
+const TrashIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Transaksi Penjualan', href: '/transactions', icon: ShoppingCartIcon },
@@ -58,6 +71,24 @@ const navigation = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const { logout } = useAuth();
+
+  const handleResetData = async () => {
+    try {
+      const response = await fetch('/api/reset-data', { method: 'POST' });
+      if (response.ok) {
+        alert('Semua data berhasil dihapus!');
+        window.location.reload();
+      } else {
+        alert('Gagal menghapus data!');
+      }
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      alert('Gagal menghapus data!');
+    }
+    setShowResetConfirm(false);
+  };
 
   return (
     <>
@@ -65,7 +96,7 @@ export default function Sidebar() {
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="p-2 bg-blue-600 text-white rounded-md"
+          className="p-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-md shadow-lg"
         >
           {isOpen ? (
             <XMarkIcon className="h-6 w-6" />
@@ -77,14 +108,17 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-200 ease-in-out
+        fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-xl border-r border-amber-200 transform transition-transform duration-200 ease-in-out
         lg:translate-x-0 lg:static lg:inset-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-blue-600 text-white">
-            <h1 className="text-xl font-bold">Manage Toko</h1>
+          <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+            <div className="flex items-center space-x-2">
+              <ShoppingCartIcon className="h-6 w-6" />
+              <h1 className="text-lg font-bold">Manage Toko</h1>
+            </div>
           </div>
 
           {/* Navigation */}
@@ -99,26 +133,76 @@ export default function Sidebar() {
                   className={`
                     flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                     ${isActive
-                      ? 'bg-blue-100 text-blue-700 border-r-4 border-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-amber-100 text-amber-800 border-r-4 border-amber-600'
+                      : 'text-amber-700 hover:bg-amber-50 hover:text-amber-800'
                     }
                   `}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
+                  <item.icon className={`mr-3 h-5 w-5 ${
+                    isActive ? 'text-amber-600' : 'text-amber-500'
+                  }`} />
                   {item.name}
                 </Link>
               );
             })}
           </nav>
 
+          {/* Action Buttons */}
+          <div className="px-4 py-4 space-y-2 border-t border-amber-100">
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <TrashIcon className="mr-3 h-5 w-5" />
+              Reset Data
+            </button>
+            
+            <button
+              onClick={logout}
+              className="w-full flex items-center px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 hover:text-amber-800 rounded-lg transition-colors"
+            >
+              <LogoutIcon className="mr-3 h-5 w-5" />
+              Logout
+            </button>
+          </div>
+
           {/* Footer */}
-          <div className="p-4 border-t">
-            <p className="text-xs text-gray-900 text-center">
-              © 2024 Manage Toko
+          <div className="p-4 border-t border-amber-100">
+            <p className="text-xs text-amber-600 text-center">
+              © 2025 Manage Toko
             </p>
           </div>
         </div>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full border border-amber-200 shadow-2xl">
+            <h3 className="text-lg font-semibold text-amber-800 mb-4">
+              Konfirmasi Reset Data
+            </h3>
+            <p className="text-amber-700 mb-6 text-sm">
+              Apakah Anda yakin ingin menghapus semua data transaksi dan pembelian? 
+              Aksi ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={handleResetData}
+                className="flex-1 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors text-sm"
+              >
+                Ya, Hapus Semua
+              </button>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 bg-amber-100 text-amber-700 py-2 px-4 rounded-lg hover:bg-amber-200 transition-colors text-sm"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Overlay for mobile */}
       {isOpen && (
