@@ -1,8 +1,8 @@
-import pool from './db';
+import pool, { withRetry } from './db';
 import { Product, Transaction, Purchase, TransactionItem, DashboardStats, ChartData } from '@/types';
 
 // Helper function for safe date conversion
-const safeDate = (dateValue: any): Date => {
+const safeDate = (dateValue: string | number | Date | null | undefined): Date => {
   if (!dateValue) return new Date();
   const date = new Date(dateValue);
   return isNaN(date.getTime()) ? new Date() : date;
@@ -271,21 +271,26 @@ export const addTransaction = async (transaction: {
 // Purchase functions
 export const getPurchases = async (): Promise<Purchase[]> => {
   try {
-    const client = await pool.connect();
-    const result = await client.query(`
-      SELECT id, product_id as "productId", product_name as "productName", 
-             quantity, cost, total, supplier, created_at as "createdAt"
-      FROM purchases 
-      ORDER BY created_at DESC
-    `);
-    client.release();
-
-    return result.rows.map(row => ({
-      ...row,
-      id: row.id.toString(),
-      date: safeDate(row.createdAt),
-      createdAt: safeDate(row.createdAt)
-    }));
+    return await withRetry(async () => {
+      const client = await pool.connect();
+      try {
+        const result = await client.query(`
+          SELECT id, product_id as "productId", product_name as "productName", 
+                 quantity, cost, total, supplier, created_at as "createdAt"
+          FROM purchases 
+          ORDER BY created_at DESC
+        `);
+        
+        return result.rows.map(row => ({
+          ...row,
+          id: row.id.toString(),
+          date: safeDate(row.createdAt),
+          createdAt: safeDate(row.createdAt)
+        }));
+      } finally {
+        client.release();
+      }
+    });
   } catch (error) {
     console.error('Error getting purchases:', error);
     return [];
@@ -344,61 +349,78 @@ export const addPurchase = async (purchase: {
 // Dashboard functions
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   try {
-    const client = await pool.connect();
+    return await withRetry(async () => {
+      const client = await pool.connect();
+      try {
+        // Get all transactions for accurate calculations
+        const allSalesResult = await client.query(`
+          SELECT
+            COALESCE(SUM(total), 0) as total_sales,
+            COALESCE(SUM(
+              (SELECT SUM(ti.quantity * p.cost) 
+               FROM transaction_items ti 
+               JOIN products p ON ti.product_id = p.id 
+               WHERE ti.transaction_id = t.id)
+            ), 0) as total_costs,
+            COUNT(*) as total_transactions
+          FROM transactions t
+        `);
 
-    // Get total sales and costs
-    const salesResult = await client.query(`
-      SELECT
-        COALESCE(SUM(total), 0) as total_sales,
-        COALESCE(SUM(
-          (SELECT SUM(ti.quantity * p.cost) 
-           FROM transaction_items ti 
-           JOIN products p ON ti.product_id = p.id 
-           WHERE ti.transaction_id = t.id)
-        ), 0) as total_costs,
-        COUNT(*) as total_transactions
-      FROM transactions t
-      WHERE DATE(created_at) = CURRENT_DATE
-    `);
+        // Get today's sales separately for realtime data
+        const todaySalesResult = await client.query(`
+          SELECT
+            COALESCE(SUM(total), 0) as today_sales,
+            COALESCE(SUM(
+              (SELECT SUM(ti.quantity * p.cost) 
+               FROM transaction_items ti 
+               JOIN products p ON ti.product_id = p.id 
+               WHERE ti.transaction_id = t.id)
+            ), 0) as today_costs,
+            COUNT(*) as today_transactions
+          FROM transactions t
+          WHERE DATE(created_at) = CURRENT_DATE
+        `);
 
-    const salesData = salesResult.rows[0];
-    const todaySales = parseFloat(salesData.total_sales) || 0;
-    const todayCosts = parseFloat(salesData.total_costs) || 0;
-    const todayProfit = todaySales - todayCosts;
+        // Get products count and low stock count
+        const productsResult = await client.query(`
+          SELECT 
+            COUNT(*) as total_products,
+            COUNT(CASE WHEN stock <= min_stock THEN 1 END) as low_stock_count
+          FROM products
+        `);
 
-    // Get products count and low stock count
-    const productsResult = await client.query(`
-      SELECT 
-        COUNT(*) as total_products,
-        COUNT(CASE WHEN stock <= min_stock THEN 1 END) as low_stock_count
-      FROM products
-    `);
+        const allSalesData = allSalesResult.rows[0];
+        const todayData = todaySalesResult.rows[0];
+        const productsData = productsResult.rows[0];
 
-    const productsData = productsResult.rows[0];
+        // Calculate values safely
+        const totalSales = allSalesData.total_sales ? parseFloat(allSalesData.total_sales) : 0;
+        const totalCosts = allSalesData.total_costs ? parseFloat(allSalesData.total_costs) : 0;
+        const todaySales = todayData.today_sales ? parseFloat(todayData.today_sales) : 0;
+        const todayCosts = todayData.today_costs ? parseFloat(todayData.today_costs) : 0;
 
-    // Get this month's data
-    const monthlyResult = await client.query(`
-      SELECT
-        COALESCE(SUM(total), 0) as monthly_sales,
-        COUNT(*) as monthly_transactions
-      FROM transactions
-      WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
-        AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-    `);
+        const safeTotalSales = isNaN(totalSales) ? 0 : totalSales;
+        const safeTotalCosts = isNaN(totalCosts) ? 0 : totalCosts;
+        const safeTodaySales = isNaN(todaySales) ? 0 : todaySales;
+        const safeTodayCosts = isNaN(todayCosts) ? 0 : todayCosts;
 
-    const monthlyData = monthlyResult.rows[0];
+        const totalProfit = safeTotalSales - safeTotalCosts;
+        const todayProfit = safeTodaySales - safeTodayCosts;
+        const safeLowStock = productsData.low_stock_count ? parseInt(productsData.low_stock_count) : 0;
 
-    client.release();
-
-    return {
-      totalSales: parseFloat(monthlyData.monthly_sales) || 0,
-      totalProfit: todayProfit,
-      totalLoss: 0,
-      lowStockItems: parseInt(productsData.low_stock_count) || 0,
-      todaySales,
-      todayProfit,
-      monthlyGrowth: 0
-    };
+        return {
+          totalSales: safeTotalSales,
+          totalProfit: isNaN(totalProfit) ? 0 : totalProfit,
+          totalLoss: totalProfit < 0 ? Math.abs(totalProfit) : 0,
+          lowStockItems: isNaN(safeLowStock) ? 0 : safeLowStock,
+          todaySales: safeTodaySales,
+          todayProfit: isNaN(todayProfit) ? 0 : todayProfit,
+          monthlyGrowth: 0
+        };
+      } finally {
+        client.release();
+      }
+    });
   } catch (error) {
     console.error('Error getting dashboard stats:', error);
     return {
@@ -415,34 +437,52 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 
 export const getChartData = async (days = 7): Promise<ChartData[]> => {
   try {
-    const client = await pool.connect();
+    return await withRetry(async () => {
+      const client = await pool.connect();
+      try {
+        const result = await client.query(`
+          WITH date_series AS (
+            SELECT generate_series(
+              CURRENT_DATE - INTERVAL '${days - 1} days',
+              CURRENT_DATE,
+              INTERVAL '1 day'
+            )::date as date
+          )
+          SELECT 
+            ds.date,
+            COALESCE(SUM(t.total), 0) as sales,
+            COALESCE(SUM(
+              (SELECT SUM(ti.quantity * p.cost) 
+               FROM transaction_items ti 
+               JOIN products p ON ti.product_id = p.id 
+               WHERE ti.transaction_id = t.id)
+            ), 0) as costs,
+            COUNT(t.id) as transactions
+          FROM date_series ds
+          LEFT JOIN transactions t ON DATE(t.created_at) = ds.date
+          GROUP BY ds.date
+          ORDER BY ds.date
+        `);
 
-    const result = await client.query(`
-      WITH date_series AS (
-        SELECT generate_series(
-          CURRENT_DATE - INTERVAL '${days - 1} days',
-          CURRENT_DATE,
-          INTERVAL '1 day'
-        )::date as date
-      )
-      SELECT 
-        ds.date,
-        COALESCE(SUM(t.total), 0) as sales,
-        COUNT(t.id) as transactions
-      FROM date_series ds
-      LEFT JOIN transactions t ON DATE(t.created_at) = ds.date
-      GROUP BY ds.date
-      ORDER BY ds.date
-    `);
-
-    client.release();
-
-    return result.rows.map(row => ({
-      date: new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }),
-      sales: parseFloat(row.sales) || 0,
-      profit: parseFloat(row.sales) * 0.3 || 0, // Estimate 30% profit margin
-      transactions: parseInt(row.transactions) || 0
-    }));
+        return result.rows.map(row => {
+          const sales = row.sales ? parseFloat(row.sales) : 0;
+          const costs = row.costs ? parseFloat(row.costs) : 0;
+          const safeSales = isNaN(sales) ? 0 : sales;
+          const safeCosts = isNaN(costs) ? 0 : costs;
+          const profit = safeSales - safeCosts; // Real profit calculation
+          const transactions = row.transactions ? parseInt(row.transactions) : 0;
+          
+          return {
+            date: new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }),
+            sales: safeSales,
+            profit: isNaN(profit) ? 0 : profit,
+            transactions: isNaN(transactions) ? 0 : transactions
+          };
+        });
+      } finally {
+        client.release();
+      }
+    });
   } catch (error) {
     console.error('Error getting chart data:', error);
     return [];

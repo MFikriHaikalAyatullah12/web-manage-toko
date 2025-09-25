@@ -1,8 +1,8 @@
 import pool from './db';
-import { Product, Transaction, Purchase, TransactionItem, DashboardStats, ChartData } from '@/types';
+import { Product, Transaction, Purchase, DashboardStats, ChartData } from '@/types';
 
 // Helper function for safe date conversion
-const safeDate = (dateValue: any): Date => {
+const safeDate = (dateValue: string | number | Date | null | undefined): Date => {
   if (!dateValue) return new Date();
   const date = new Date(dateValue);
   return isNaN(date.getTime()) ? new Date() : date;

@@ -13,6 +13,27 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   return response.json();
 };
 
+// Realtime API
+export const fetchRealtimeData = async (): Promise<{
+  stats: DashboardStats;
+  chartData: ChartData[];
+  timestamp: string;
+  success: boolean;
+}> => {
+  const response = await fetch(`${API_BASE_URL}/realtime`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch realtime data');
+  }
+  return response.json();
+};
+
 // Products API
 export const fetchProducts = async (): Promise<Product[]> => {
   const response = await fetch(`${API_BASE_URL}/products`);

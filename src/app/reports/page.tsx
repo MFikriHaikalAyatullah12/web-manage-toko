@@ -36,12 +36,19 @@ export default function ReportsPage() {
   }, []);
 
   const summary = {
-    totalSales: transactions.reduce((sum, t) => sum + (t.total || 0), 0),
-    totalPurchases: purchases.reduce((sum, p) => sum + (p.total || 0), 0),
+    totalSales: transactions.reduce((sum, t) => {
+      const total = isNaN(t.total) ? 0 : t.total;
+      return sum + total;
+    }, 0),
+    totalPurchases: purchases.reduce((sum, p) => {
+      const total = isNaN(p.total) ? 0 : p.total;
+      return sum + total;
+    }, 0),
     transactionCount: transactions.length,
     purchaseCount: purchases.length,
-    profit: transactions.reduce((sum, t) => sum + (t.total || 0), 0) - 
-            purchases.reduce((sum, p) => sum + (p.total || 0), 0),
+    get profit() {
+      return this.totalSales - this.totalPurchases;
+    }
   };
 
   return (
@@ -133,10 +140,13 @@ export default function ReportsPage() {
               <div className="bg-purple-50 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold text-purple-900">Rata-rata Transaksi</h3>
                 <p className="text-2xl font-bold text-purple-600">
-                  {summary.transactionCount > 0 
-                    ? formatCurrency(summary.totalSales / summary.transactionCount)
-                    : formatCurrency(0)
-                  }
+                  {(() => {
+                    if (summary.transactionCount <= 0 || summary.totalSales <= 0) {
+                      return formatCurrency(0);
+                    }
+                    const average = summary.totalSales / summary.transactionCount;
+                    return formatCurrency(isNaN(average) ? 0 : average);
+                  })()}
                 </p>
                 <p className="text-sm text-purple-700">Per transaksi</p>
               </div>

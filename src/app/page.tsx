@@ -11,17 +11,19 @@ const SimpleChart = ({ data }: { data: ChartData[] }) => (
     <h3 className="text-lg font-semibold mb-4 text-gray-900">Penjualan 7 Hari Terakhir</h3>
     <div className="flex items-end space-x-2 h-40">
       {data.map((item, index) => {
-        const maxSales = Math.max(...data.map(d => d.sales));
-        const height = maxSales > 0 ? (item.sales / maxSales) * 100 : 0;
+        const maxSales = Math.max(...data.map(d => d.sales).filter(s => !isNaN(s) && s > 0));
+        const itemSales = isNaN(item.sales) ? 0 : item.sales;
+        const height = maxSales > 0 && itemSales > 0 ? (itemSales / maxSales) * 100 : 0;
+        const safeHeight = isNaN(height) ? 0 : Math.max(0, Math.min(100, height));
         
         return (
           <div key={index} className="flex-1 flex flex-col items-center">
             <div className="text-xs text-gray-900 mb-1">
-              {formatCurrency(item.sales)}
+              {formatCurrency(itemSales)}
             </div>
             <div 
               className="w-full bg-blue-500 rounded-t"
-              style={{ height: `${height}%`, minHeight: '4px' }}
+              style={{ height: `${safeHeight}%`, minHeight: '4px' }}
             />
             <div className="text-xs text-gray-900 mt-1">{item.date}</div>
           </div>
@@ -101,8 +103,8 @@ export default function Dashboard() {
     // Load data immediately
     loadData();
     
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(loadData, 30000);
+    // Set up auto-refresh every 15 seconds for realtime dashboard
+    const interval = setInterval(loadData, 15000);
     
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
@@ -134,7 +136,7 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="text-xs text-gray-900 mt-1">
-            Auto-refresh setiap 30 detik
+            Auto-refresh setiap 15 detik
           </div>
         </div>
       </div>

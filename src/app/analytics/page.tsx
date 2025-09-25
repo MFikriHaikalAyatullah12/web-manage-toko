@@ -12,18 +12,20 @@ const BarChart = ({ data, title }: { data: ChartData[]; title: string }) => (
     <div className="h-64">
       <div className="flex items-end justify-between h-48 space-x-2">
         {data.map((item, index) => {
-          const maxValue = Math.max(...data.map(d => d.sales));
-          const height = maxValue > 0 ? (item.sales / maxValue) * 100 : 0;
+          const maxValue = Math.max(...data.map(d => d.sales).filter(s => !isNaN(s) && s > 0));
+          const itemSales = isNaN(item.sales) ? 0 : item.sales;
+          const height = maxValue > 0 && itemSales > 0 ? (itemSales / maxValue) * 100 : 0;
+          const safeHeight = isNaN(height) ? 0 : Math.max(0, Math.min(100, height));
           
           return (
             <div key={index} className="flex flex-col items-center flex-1">
               <div className="text-xs text-gray-900 mb-1">
-                {formatCurrency(item.sales)}
+                {formatCurrency(itemSales)}
               </div>
               <div 
                 className="w-full bg-blue-500 rounded-t transition-all duration-300 hover:bg-blue-600"
-                style={{ height: `${height}%`, minHeight: height > 0 ? '8px' : '2px' }}
-                title={`${item.date}: ${formatCurrency(item.sales)}`}
+                style={{ height: `${safeHeight}%`, minHeight: safeHeight > 0 ? '8px' : '2px' }}
+                title={`${item.date}: ${formatCurrency(itemSales)}`}
               />
               <div className="text-xs text-gray-900 mt-1">{item.date}</div>
             </div>
@@ -41,21 +43,24 @@ const ProfitChart = ({ data, title }: { data: ChartData[]; title: string }) => (
     <div className="h-64">
       <div className="flex items-end justify-between h-48 space-x-2">
         {data.map((item, index) => {
-          const maxValue = Math.max(...data.map(d => Math.abs(d.profit)));
-          const height = maxValue > 0 ? (Math.abs(item.profit) / maxValue) * 100 : 0;
-          const isProfit = item.profit >= 0;
+          const maxValue = Math.max(...data.map(d => Math.abs(d.profit)).filter(p => !isNaN(p) && p > 0));
+          const itemProfit = isNaN(item.profit) ? 0 : item.profit;
+          const absProfit = Math.abs(itemProfit);
+          const height = maxValue > 0 && absProfit > 0 ? (absProfit / maxValue) * 100 : 0;
+          const safeHeight = isNaN(height) ? 0 : Math.max(0, Math.min(100, height));
+          const isProfit = itemProfit >= 0;
           
           return (
             <div key={index} className="flex flex-col items-center flex-1">
               <div className="text-xs text-gray-900 mb-1">
-                {formatCurrency(item.profit)}
+                {formatCurrency(itemProfit)}
               </div>
               <div 
                 className={`w-full rounded-t transition-all duration-300 ${
                   isProfit ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
                 }`}
-                style={{ height: `${height}%`, minHeight: height > 0 ? '8px' : '2px' }}
-                title={`${item.date}: ${formatCurrency(item.profit)}`}
+                style={{ height: `${safeHeight}%`, minHeight: safeHeight > 0 ? '8px' : '2px' }}
+                title={`${item.date}: ${formatCurrency(itemProfit)}`}
               />
               <div className="text-xs text-gray-900 mt-1">{item.date}</div>
             </div>
@@ -77,8 +82,11 @@ const TopProducts = ({ transactions }: { transactions: Transaction[] }) => {
           revenue: 0,
         };
       }
-      acc[item.productId].quantity += item.quantity;
-      acc[item.productId].revenue += item.total;
+      const quantity = isNaN(item.quantity) ? 0 : item.quantity;
+      const total = isNaN(item.total) ? 0 : item.total;
+      
+      acc[item.productId].quantity += quantity;
+      acc[item.productId].revenue += total;
     });
     return acc;
   }, {} as Record<string, { name: string; quantity: number; revenue: number }>);
@@ -122,8 +130,11 @@ const LowStockAlert = ({ products }: { products: Product[] }) => {
       <h3 className="text-lg font-semibold mb-4">Peringatan Stok</h3>
       <div className="space-y-3">
         {lowStockProducts.slice(0, 5).map((product) => {
-          const stockPercentage = (product.stock / product.minStock) * 100;
-          const alertLevel = stockPercentage <= 0 ? 'critical' : stockPercentage <= 50 ? 'warning' : 'low';
+          const stock = isNaN(product.stock) ? 0 : product.stock;
+          const minStock = isNaN(product.minStock) ? 1 : Math.max(1, product.minStock);
+          const stockPercentage = (stock / minStock) * 100;
+          const safePercentage = isNaN(stockPercentage) ? 0 : stockPercentage;
+          const alertLevel = safePercentage <= 0 ? 'critical' : safePercentage <= 50 ? 'warning' : 'low';
           
           const alertColors = {
             critical: 'bg-red-100 border-red-500 text-red-800',
@@ -192,8 +203,8 @@ export default function AnalyticsPage() {
     // Load data immediately
     loadData();
     
-    // Set up auto-refresh every 45 seconds for analytics
-    const interval = setInterval(loadData, 45000);
+    // Set up more frequent auto-refresh for realtime experience (every 15 seconds)
+    const interval = setInterval(loadData, 15000);
     
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
@@ -225,7 +236,7 @@ export default function AnalyticsPage() {
             </span>
           </div>
           <div className="text-xs text-gray-900 mt-1">
-            Auto-refresh setiap 45 detik
+            Auto-refresh setiap 15 detik
           </div>
         </div>
       </div>
@@ -260,18 +271,26 @@ export default function AnalyticsPage() {
         <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
           <h3 className="text-lg font-medium">Rata-rata Transaksi</h3>
           <p className="text-3xl font-bold">
-            {formatCurrency(transactions.length > 0 && stats.totalSales > 0 
-              ? stats.totalSales / transactions.length 
-              : 0)}
+            {(() => {
+              if (!transactions.length || !stats.totalSales || stats.totalSales <= 0) return formatCurrency(0);
+              const average = stats.totalSales / transactions.length;
+              return formatCurrency(isNaN(average) ? 0 : average);
+            })()}
           </p>
           <p className="text-purple-100">Per transaksi</p>
         </div>
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-lg text-white">
           <h3 className="text-lg font-medium">Margin Keuntungan</h3>
           <p className="text-3xl font-bold">
-            {(stats.totalSales > 0 && stats.totalProfit !== null && !isNaN(stats.totalProfit)) 
-              ? ((stats.totalProfit / stats.totalSales) * 100).toFixed(1) 
-              : '0'}%
+            {(() => {
+              if (!stats.totalSales || stats.totalSales <= 0 || 
+                  stats.totalProfit === null || stats.totalProfit === undefined || 
+                  isNaN(stats.totalProfit)) {
+                return '0.0';
+              }
+              const margin = (stats.totalProfit / stats.totalSales) * 100;
+              return isNaN(margin) ? '0.0' : margin.toFixed(1);
+            })()}%
           </p>
           <p className="text-orange-100">Profit margin</p>
         </div>
