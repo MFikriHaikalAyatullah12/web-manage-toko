@@ -47,6 +47,13 @@ export default function TransactionsPage() {
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.productId === product.id);
+    const currentQuantityInCart = existingItem ? existingItem.quantity : 0;
+    
+    // Check if adding one more item would exceed available stock
+    if (currentQuantityInCart >= product.stock) {
+      alert(`Stok tidak mencukupi! Stok tersedia untuk ${product.name}: ${product.stock}`);
+      return;
+    }
     
     if (existingItem) {
       setCart(cart.map(item =>
@@ -70,13 +77,21 @@ export default function TransactionsPage() {
   const updateQuantity = (productId: number, quantity: number) => {
     if (quantity <= 0) {
       setCart(cart.filter(item => item.productId !== productId));
-    } else {
-      setCart(cart.map(item =>
-        item.productId === productId
-          ? { ...item, quantity, total: quantity * item.price }
-          : item
-      ));
+      return;
     }
+    
+    // Find the product to check stock availability
+    const product = products.find(p => p.id === productId);
+    if (product && quantity > product.stock) {
+      alert(`Stok tidak mencukupi! Stok tersedia untuk ${product.name}: ${product.stock}`);
+      return;
+    }
+    
+    setCart(cart.map(item =>
+      item.productId === productId
+        ? { ...item, quantity, total: quantity * item.price }
+        : item
+    ));
   };
 
   const removeFromCart = (productId: number) => {
@@ -130,9 +145,25 @@ export default function TransactionsPage() {
       } else {
         alert('Gagal menyimpan transaksi');
       }
-    } catch (error) {
-      alert('Terjadi kesalahan saat memproses transaksi');
-      console.error(error);
+    } catch (error: any) {
+      let errorMessage = 'Terjadi kesalahan saat memproses transaksi';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      alert(errorMessage);
+      console.error('Transaction error:', error);
+      
+      // Refresh products to get updated stock after failed transaction
+      try {
+        const updatedProducts = await fetchProducts();
+        setProducts(updatedProducts);
+      } catch (refreshError) {
+        console.error('Error refreshing products:', refreshError);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -195,10 +226,11 @@ export default function TransactionsPage() {
                 </div>
                 <button
                   onClick={() => addToCart(product)}
-                  disabled={product.stock <= 0}
+                  disabled={product.stock <= 0 || (cart.find(item => item.productId === product.id)?.quantity || 0) >= product.stock}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {product.stock <= 0 ? 'Habis' : 'Tambah'}
+                  {product.stock <= 0 ? 'Habis' : 
+                   (cart.find(item => item.productId === product.id)?.quantity || 0) >= product.stock ? 'Max' : 'Tambah'}
                 </button>
               </div>
             ))}
@@ -233,7 +265,8 @@ export default function TransactionsPage() {
                       <span className="w-8 text-center">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                        className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600"
+                        disabled={(products.find(p => p.id === item.productId)?.stock || 0) <= item.quantity}
+                        className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
                       >
                         +
                       </button>

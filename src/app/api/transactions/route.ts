@@ -80,6 +80,26 @@ export async function POST(request: NextRequest) {
     const transaction = transactionResult.rows[0];
     const transactionId = transaction.id;
 
+    // Validate stock availability for all items first
+    for (const item of items) {
+      if (item.productId) {
+        const stockCheck = await client.query(`
+          SELECT stock, name FROM products WHERE id = $1
+        `, [item.productId]);
+        
+        if (stockCheck.rows.length === 0) {
+          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan`);
+        }
+        
+        const currentStock = stockCheck.rows[0].stock;
+        const productName = stockCheck.rows[0].name;
+        
+        if (currentStock < item.quantity) {
+          throw new Error(`Stok tidak mencukupi untuk produk "${productName}". Stok tersedia: ${currentStock}, diminta: ${item.quantity}`);
+        }
+      }
+    }
+
     // Insert transaction items and update product stock
     for (const item of items) {
       // Insert transaction item
@@ -88,13 +108,22 @@ export async function POST(request: NextRequest) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `, [transactionId, item.productId, item.productName || item.name, item.quantity, item.price, item.cost || 0, item.total || (item.quantity * item.price)]);
 
-      // Update product stock
+      // Update product stock (with additional safety check)
       if (item.productId) {
         await client.query(`
           UPDATE products 
-          SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP
-          WHERE id = $2
+          SET stock = GREATEST(0, stock - $1), updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2 AND stock >= $1
         `, [item.quantity, item.productId]);
+        
+        // Double check that the update was successful
+        const updatedStock = await client.query(`
+          SELECT stock FROM products WHERE id = $1
+        `, [item.productId]);
+        
+        if (updatedStock.rows[0].stock < 0) {
+          throw new Error(`Gagal mengupdate stok untuk produk ID ${item.productId}`);
+        }
       }
     }
 
