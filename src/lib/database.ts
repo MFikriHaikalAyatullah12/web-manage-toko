@@ -66,7 +66,7 @@ export const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'up
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id, name, category, price, cost, stock, min_stock as "minStock", 
                 supplier, created_at as "createdAt", updated_at as "updatedAt"
-    `, [product.name, product.category, product.price, product.cost, product.stock, product.minStock, product.supplier]);
+    `, [product.name, product.category, product.price, product.cost, product.stock, product.min_stock, product.supplier]);
     client.release();
     
     const row = result.rows[0];
@@ -109,9 +109,9 @@ export const updateProduct = async (id: string, product: Partial<Omit<Product, '
       fields.push(`stock = $${paramCount++}`);
       values.push(product.stock);
     }
-    if (product.minStock !== undefined) {
+    if (product.min_stock !== undefined) {
       fields.push(`min_stock = $${paramCount++}`);
-      values.push(product.minStock);
+      values.push(product.min_stock);
     }
     if (product.supplier !== undefined) {
       fields.push(`supplier = $${paramCount++}`);
@@ -409,13 +409,14 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         const safeLowStock = productsData.low_stock_count ? parseInt(productsData.low_stock_count) : 0;
 
         return {
-          totalSales: safeTotalSales,
-          totalProfit: isNaN(totalProfit) ? 0 : totalProfit,
-          totalLoss: totalProfit < 0 ? Math.abs(totalProfit) : 0,
-          lowStockItems: isNaN(safeLowStock) ? 0 : safeLowStock,
+          totalProducts: productsData.total_products ? parseInt(productsData.total_products) : 0,
+          lowStockProducts: isNaN(safeLowStock) ? 0 : safeLowStock,
           todaySales: safeTodaySales,
-          todayProfit: isNaN(todayProfit) ? 0 : todayProfit,
-          monthlyGrowth: 0
+          todayTransactionCount: todayData.today_transactions ? parseInt(todayData.today_transactions) : 0,
+          totalSales: safeTotalSales,
+          totalPurchases: 0, // This could be calculated from purchases table if needed
+          profit: isNaN(totalProfit) ? 0 : totalProfit,
+          recentTransactions: []
         };
       } finally {
         client.release();
@@ -424,13 +425,14 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   } catch (error) {
     console.error('Error getting dashboard stats:', error);
     return {
-      totalSales: 0,
-      totalProfit: 0,
-      totalLoss: 0,
-      lowStockItems: 0,
+      totalProducts: 0,
+      lowStockProducts: 0,
       todaySales: 0,
-      todayProfit: 0,
-      monthlyGrowth: 0
+      todayTransactionCount: 0,
+      totalSales: 0,
+      totalPurchases: 0,
+      profit: 0,
+      recentTransactions: []
     };
   }
 };
@@ -474,7 +476,9 @@ export const getChartData = async (days = 7): Promise<ChartData[]> => {
           
           return {
             date: new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }),
+            day: new Date(row.date).toLocaleDateString('id-ID', { weekday: 'short' }),
             sales: safeSales,
+            purchases: 0, // This could be calculated from purchases table if needed
             profit: isNaN(profit) ? 0 : profit,
             transactions: isNaN(transactions) ? 0 : transactions
           };

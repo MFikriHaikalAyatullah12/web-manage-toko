@@ -113,7 +113,7 @@ export const createPurchase = async (purchase: {
   productId: string;
   productName: string;
   quantity: number;
-  cost: number;
+  price: number; // Changed from cost to price to match API
   total: number;
   supplier: string;
 }): Promise<Purchase> => {

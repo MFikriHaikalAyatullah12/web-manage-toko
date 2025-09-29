@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from './AuthProvider';
 
-// Simple SVG icons
+// Modern SVG icons
 const HomeIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -60,12 +60,18 @@ const TrashIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const StoreIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Transaksi Penjualan', href: '/transactions', icon: ShoppingCartIcon },
-  { name: 'Manajemen Stok', href: '/inventory', icon: CubeIcon },
-  { name: 'Laporan', href: '/reports', icon: DocumentTextIcon },
-  { name: 'Analisis', href: '/analytics', icon: ChartBarIcon },
+  { name: 'Dashboard', href: '/', icon: HomeIcon, color: 'blue' },
+  { name: 'Transaksi Penjualan', href: '/transactions', icon: ShoppingCartIcon, color: 'green' },
+  { name: 'Manajemen Stok', href: '/inventory', icon: CubeIcon, color: 'purple' },
+  { name: 'Laporan', href: '/reports', icon: DocumentTextIcon, color: 'orange' },
+  { name: 'Analisis', href: '/analytics', icon: ChartBarIcon, color: 'cyan' },
 ];
 
 export default function Sidebar() {
@@ -96,7 +102,7 @@ export default function Sidebar() {
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="p-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-md shadow-lg"
+          className="p-2.5 bg-slate-800 text-white rounded-xl shadow-lg hover:bg-slate-700 transition-colors"
         >
           {isOpen ? (
             <XMarkIcon className="h-6 w-6" />
@@ -108,21 +114,29 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-xl border-r border-amber-200 transform transition-transform duration-200 ease-in-out
+        fixed inset-y-0 left-0 z-40 w-72 bg-slate-800 shadow-2xl transform transition-transform duration-300 ease-out
         lg:translate-x-0 lg:static lg:inset-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-            <div className="flex items-center space-x-2">
-              <ShoppingCartIcon className="h-6 w-6" />
-              <h1 className="text-lg font-bold">Manage Toko</h1>
+          <div className="flex items-center px-6 py-6 bg-gradient-to-r from-blue-600 to-blue-700 border-b border-slate-700">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-white bg-opacity-20 rounded-xl">
+                <StoreIcon className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">Manage Toko</h1>
+                <p className="text-xs text-blue-100 opacity-90">Sistem Manajemen</p>
+              </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-4">
+              Menu Utama
+            </div>
             {navigation.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -131,71 +145,91 @@ export default function Sidebar() {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={`
-                    flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                    group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200
                     ${isActive
-                      ? 'bg-amber-100 text-amber-800 border-r-4 border-amber-600'
-                      : 'text-amber-700 hover:bg-amber-50 hover:text-amber-800'
+                      ? 'bg-blue-600 text-white shadow-lg transform scale-105'
+                      : 'text-slate-300 hover:bg-slate-700 hover:text-white hover:scale-102'
                     }
                   `}
                 >
-                  <item.icon className={`mr-3 h-5 w-5 ${
-                    isActive ? 'text-amber-600' : 'text-amber-500'
+                  <item.icon className={`mr-4 h-5 w-5 flex-shrink-0 ${
+                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
                   }`} />
-                  {item.name}
+                  <span className="truncate">{item.name}</span>
+                  {isActive && (
+                    <div className="ml-auto">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                 </Link>
               );
             })}
           </nav>
 
           {/* Action Buttons */}
-          <div className="px-4 py-4 space-y-2 border-t border-amber-100">
+          <div className="px-4 py-4 space-y-2 border-t border-slate-700">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-3">
+              Tindakan
+            </div>
             <button
               onClick={() => setShowResetConfirm(true)}
-              className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="w-full flex items-center px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-600 hover:bg-opacity-20 hover:text-red-300 rounded-xl transition-all duration-200 group"
             >
-              <TrashIcon className="mr-3 h-5 w-5" />
+              <TrashIcon className="mr-4 h-5 w-5 flex-shrink-0" />
               Reset Data
             </button>
             
             <button
               onClick={logout}
-              className="w-full flex items-center px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 hover:text-amber-800 rounded-lg transition-colors"
+              className="w-full flex items-center px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl transition-all duration-200 group"
             >
-              <LogoutIcon className="mr-3 h-5 w-5" />
+              <LogoutIcon className="mr-4 h-5 w-5 flex-shrink-0" />
               Logout
             </button>
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-amber-100">
-            <p className="text-xs text-amber-600 text-center">
-              © 2025 Manage Toko
-            </p>
+          <div className="px-6 py-4 border-t border-slate-700 bg-slate-900">
+            <div className="flex items-center space-x-3">
+              <div className="flex-1">
+                <p className="text-xs text-slate-400">© 2025 Manage Toko</p>
+                <p className="text-xs text-slate-500">Professional Edition</p>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-400">Live</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full border border-amber-200 shadow-2xl">
-            <h3 className="text-lg font-semibold text-amber-800 mb-4">
-              Konfirmasi Reset Data
-            </h3>
-            <p className="text-amber-700 mb-6 text-sm">
-              Apakah Anda yakin ingin menghapus semua data transaksi dan pembelian? 
-              Aksi ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex space-x-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 bg-red-100 rounded-full mb-4">
+                <TrashIcon className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                Konfirmasi Reset Data
+              </h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Apakah Anda yakin ingin menghapus semua data transaksi dan pembelian? 
+                <strong className="text-red-600"> Aksi ini tidak dapat dibatalkan.</strong>
+              </p>
+            </div>
+            <div className="flex space-x-4">
               <button
                 onClick={handleResetData}
-                className="flex-1 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition-colors text-sm"
+                className="flex-1 bg-red-600 text-white py-3 px-4 rounded-xl hover:bg-red-700 transition-colors font-medium"
               >
                 Ya, Hapus Semua
               </button>
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="flex-1 bg-amber-100 text-amber-700 py-2 px-4 rounded-lg hover:bg-amber-200 transition-colors text-sm"
+                className="flex-1 bg-slate-100 text-slate-700 py-3 px-4 rounded-xl hover:bg-slate-200 transition-colors font-medium"
               >
                 Batal
               </button>

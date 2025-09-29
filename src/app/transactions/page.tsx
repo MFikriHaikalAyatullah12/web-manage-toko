@@ -145,13 +145,16 @@ export default function TransactionsPage() {
       } else {
         alert('Gagal menyimpan transaksi');
       }
-    } catch (error: any) {
+    } catch (error) {
       let errorMessage = 'Terjadi kesalahan saat memproses transaksi';
       
-      if (error.message) {
+      if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        const errorObj = error as { response?: { data?: { error?: string } } };
+        if (errorObj.response?.data?.error) {
+          errorMessage = errorObj.response.data.error;
+        }
       }
       
       alert(errorMessage);
@@ -171,175 +174,273 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-amber-800">Transaksi Penjualan</h1>
-          <p className="text-amber-700">Input penjualan produk dengan stok real-time</p>
+      {/* Professional Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className="mb-4 sm:mb-0">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Transaksi Penjualan</h1>
+          <p className="text-slate-600">
+            Input penjualan produk dengan stok real-time dan validasi otomatis
+          </p>
         </div>
-        <div className="text-right">
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:items-end space-y-2">
+          <div className="flex items-center space-x-3">
             {isLoading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
             )}
-            <div className="flex items-center text-xs text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
-              Stok Real-time
+            <div className="flex items-center px-3 py-1.5 bg-green-100 rounded-full">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+              <span className="text-xs font-semibold text-green-700">Stok Real-time</span>
             </div>
           </div>
-          <div className="text-xs text-amber-600 mt-1">
+          <div className="text-sm text-slate-500">
             Update terakhir: {lastUpdated.toLocaleTimeString('id-ID')}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Product Selection */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">Pilih Produk</h2>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Product Selection - Takes 2 columns */}
+        <div className="xl:col-span-2 bg-white rounded-2xl p-6 card-shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800">Pilih Produk</h2>
+              <p className="text-sm text-slate-600 mt-1">Klik produk untuk menambah ke keranjang</p>
+            </div>
+            <div className="text-sm text-slate-500">
+              {filteredProducts.length} produk tersedia
+            </div>
+          </div>
           
-          {/* Search */}
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Cari produk..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-            />
+          {/* Enhanced Search */}
+          <div className="mb-6">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Cari produk berdasarkan nama atau kategori..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 placeholder-slate-500 transition-colors"
+              />
+            </div>
           </div>
 
-          {/* Product List */}
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900">{product.name}</h3>
-                  <p className="text-sm text-gray-900">{product.category}</p>
-                  <p className="text-sm font-semibold text-green-600">
-                    {formatCurrency(product.price)}
-                  </p>
-                  <p className="text-xs text-gray-900">Stok: {product.stock}</p>
-                </div>
-                <button
-                  onClick={() => addToCart(product)}
-                  disabled={product.stock <= 0 || (cart.find(item => item.productId === product.id)?.quantity || 0) >= product.stock}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          {/* Professional Product Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+            {filteredProducts.map((product) => {
+              const cartQuantity = cart.find(item => item.productId === product.id)?.quantity || 0;
+              const isOutOfStock = product.stock <= 0;
+              const isMaxQuantity = cartQuantity >= product.stock;
+              
+              return (
+                <div
+                  key={product.id}
+                  className={`group p-4 border-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                    isOutOfStock 
+                      ? 'border-red-200 bg-red-50 cursor-not-allowed' 
+                      : isMaxQuantity
+                        ? 'border-orange-200 bg-orange-50'
+                        : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-md hover:bg-blue-50'
+                  }`}
+                  onClick={() => !isOutOfStock && !isMaxQuantity && addToCart(product)}
                 >
-                  {product.stock <= 0 ? 'Habis' : 
-                   (cart.find(item => item.productId === product.id)?.quantity || 0) >= product.stock ? 'Max' : 'Tambah'}
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-semibold text-sm ${isOutOfStock ? 'text-red-700' : 'text-slate-800'} truncate`}>
+                        {product.name}
+                      </h3>
+                      <p className={`text-xs mt-1 ${isOutOfStock ? 'text-red-600' : 'text-slate-600'}`}>
+                        {product.category}
+                      </p>
+                    </div>
+                    {cartQuantity > 0 && (
+                      <div className="flex-shrink-0 ml-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {cartQuantity}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className={`text-sm font-bold ${isOutOfStock ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(product.price)}
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs ${
+                          product.stock <= 5 ? 'text-orange-600 font-medium' : 'text-slate-500'
+                        }`}>
+                          Stok: {product.stock}
+                        </span>
+                        {product.stock <= 5 && product.stock > 0 && (
+                          <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                            Terbatas
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <button
+                      className={`px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                        isOutOfStock 
+                          ? 'bg-red-200 text-red-700 cursor-not-allowed' 
+                          : isMaxQuantity
+                            ? 'bg-orange-200 text-orange-700 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 group-hover:bg-blue-700'
+                      }`}
+                      disabled={isOutOfStock || isMaxQuantity}
+                    >
+                      {isOutOfStock ? 'Habis' : isMaxQuantity ? 'Max' : 'Tambah'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Cart */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">Keranjang Belanja</h2>
+        {/* Professional Cart */}
+        <div className="bg-white rounded-2xl p-6 card-shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800">Keranjang</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                {cart.length} item{cart.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            {cart.length > 0 && (
+              <button
+                onClick={() => setCart([])}
+                className="text-sm text-red-600 hover:text-red-700 font-medium"
+              >
+                Kosongkan
+              </button>
+            )}
+          </div>
 
           {cart.length === 0 ? (
-            <p className="text-gray-900 text-center py-8">Keranjang kosong</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6" />
+                </svg>
+              </div>
+              <p className="text-slate-600 font-medium">Keranjang kosong</p>
+              <p className="text-sm text-slate-500 mt-1">Tambahkan produk untuk memulai transaksi</p>
+            </div>
           ) : (
             <>
               {/* Cart Items */}
               <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
                 {cart.map((item) => (
-                  <div key={item.productId} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{item.productName}</h4>
-                      <p className="text-sm text-gray-900">
-                        {formatCurrency(item.price)} × {item.quantity}
-                      </p>
+                  <div key={item.productId} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-slate-800 text-sm truncate">{item.productName}</h4>
+                        <p className="text-xs text-slate-600 mt-1">
+                          {formatCurrency(item.price)} × {item.quantity}
+                        </p>
+                      </div>
+                      <div className="flex items-center text-sm font-bold text-slate-800 ml-4">
+                        {formatCurrency(item.total)}
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                        className="w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                        disabled={(products.find(p => p.id === item.productId)?.stock || 0) <= item.quantity}
-                        className="w-8 h-8 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                      >
-                        +
-                      </button>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          className="w-7 h-7 bg-red-500 text-white rounded-full hover:bg-red-600 flex items-center justify-center text-sm font-bold"
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          disabled={(products.find(p => p.id === item.productId)?.stock || 0) <= item.quantity}
+                          className="w-7 h-7 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center text-sm font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
                       <button
                         onClick={() => removeFromCart(item.productId)}
-                        className="w-8 h-8 bg-gray-500 text-white rounded-full hover:bg-gray-600"
+                        className="text-red-500 hover:text-red-700 p-1"
                       >
-                        ×
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
-                    </div>
-                    <div className="w-24 text-right font-semibold text-gray-900">
-                      {formatCurrency(item.total)}
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Transaction Details */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 border-t border-slate-100 pt-6">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Kasir
                     </label>
                     <input
                       type="text"
                       value={cashierName}
                       onChange={(e) => setCashierName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                     />
                   </div>
+                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Metode Pembayaran
                     </label>
                     <select
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'transfer')}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                     >
-                      <option value="cash">Tunai</option>
-                      <option value="card">Kartu</option>
-                      <option value="transfer">Transfer</option>
+                      <option value="cash">💰 Tunai</option>
+                      <option value="card">💳 Kartu</option>
+                      <option value="transfer">📱 Transfer</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Diskon (Rp)
+                    </label>
+                    <input
+                      type="number"
+                      value={discount}
+                      onChange={(e) => setDiscount(Number(e.target.value))}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                      min="0"
+                      max={calculateSubtotal()}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Diskon (Rp)
-                  </label>
-                  <input
-                    type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    min="0"
-                  />
-                </div>
-
-                {/* Summary */}
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-900">Subtotal:</span>
-                    <span className="text-gray-900">{formatCurrency(calculateSubtotal())}</span>
+                {/* Professional Summary */}
+                <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Subtotal:</span>
+                    <span className="font-medium text-slate-800">{formatCurrency(calculateSubtotal())}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-900">Diskon:</span>
-                    <span className="text-gray-900">-{formatCurrency(discount)}</span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold border-t pt-2">
-                    <span className="text-gray-900">Total:</span>
-                    <span className="text-gray-900">{formatCurrency(calculateTotal())}</span>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600">Diskon:</span>
+                      <span className="font-medium text-green-600">-{formatCurrency(discount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold border-t border-slate-200 pt-3">
+                    <span className="text-slate-800">Total:</span>
+                    <span className="text-blue-600">{formatCurrency(calculateTotal())}</span>
                   </div>
                 </div>
 
@@ -347,9 +448,21 @@ export default function TransactionsPage() {
                 <button
                   onClick={processTransaction}
                   disabled={isProcessing || cart.length === 0}
-                  className="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
                 >
-                  {isProcessing ? 'Memproses...' : 'Proses Transaksi'}
+                  {isProcessing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      <span>Memproses...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Proses Transaksi</span>
+                    </>
+                  )}
                 </button>
               </div>
             </>

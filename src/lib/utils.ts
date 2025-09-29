@@ -1,6 +1,16 @@
-export const formatCurrency = (amount: number | null | undefined) => {
+export const formatCurrency = (amount: number | null | undefined, short?: boolean) => {
   // Handle null, undefined, or NaN values
   const safeAmount = (amount === null || amount === undefined || isNaN(amount)) ? 0 : Number(amount);
+  
+  if (short && safeAmount >= 1000000) {
+    // Format in millions for short format
+    const millions = safeAmount / 1000000;
+    return `Rp ${millions.toFixed(1)}M`;
+  } else if (short && safeAmount >= 1000) {
+    // Format in thousands for short format
+    const thousands = safeAmount / 1000;
+    return `Rp ${thousands.toFixed(0)}K`;
+  }
   
   // Format dengan separator ribuan manual
   const formatted = Math.floor(safeAmount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
