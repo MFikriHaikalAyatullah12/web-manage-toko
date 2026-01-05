@@ -34,6 +34,42 @@ const ProfessionalChart = ({ data }: { data: ChartData[] }) => {
     );
   }
 
+  // Calculate min and max for scaling
+  const salesValues = safeData.map(d => d.sales || 0);
+  const maxSales = Math.max(...salesValues, 1);
+  const minSales = Math.min(...salesValues);
+  const range = maxSales - minSales || 1;
+
+  // Calculate positions for line chart
+  const chartHeight = 200;
+  const chartWidth = 100; // percentage
+  const pointSpacing = chartWidth / Math.max(safeData.length - 1, 1);
+
+  const getYPosition = (value: number) => {
+    const percentage = ((value - minSales) / range);
+    return chartHeight - (percentage * chartHeight);
+  };
+
+  // Build SVG path for the line
+  let pathData = '';
+  const points: Array<{ x: number; y: number; value: number; increasing: boolean }> = [];
+  
+  safeData.forEach((item, index) => {
+    const value = item.sales || 0;
+    const x = index * pointSpacing;
+    const y = getYPosition(value);
+    const prevValue = index > 0 ? (safeData[index - 1].sales || 0) : value;
+    const increasing = value >= prevValue;
+    
+    points.push({ x, y, value, increasing });
+    
+    if (index === 0) {
+      pathData += `M ${x} ${y}`;
+    } else {
+      pathData += ` L ${x} ${y}`;
+    }
+  });
+
   return (
     <div className="bg-white rounded-2xl p-6 card-shadow-lg">
       <div className="flex items-center justify-between mb-6">
@@ -49,41 +85,140 @@ const ProfessionalChart = ({ data }: { data: ChartData[] }) => {
         </div>
       </div>
       
-      <div className="flex items-end justify-between h-64 space-x-3">
-        {safeData.map((item, index) => {
-          const maxSales = Math.max(...safeData.map(d => d.sales || 0).filter(s => s > 0), 1);
-          const itemSales = item.sales || 0;
-          const height = maxSales > 0 && itemSales > 0 ? (itemSales / maxSales) * 100 : 0;
-          const safeHeight = Math.max(0, Math.min(100, height));
-          
-          return (
-            <div key={index} className="flex-1 flex flex-col items-center">
-              <div className="w-full relative group">
+      {/* Line Chart Container */}
+      <div className="relative" style={{ height: `${chartHeight + 60}px` }}>
+        {/* Grid lines */}
+        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="border-t border-slate-100"></div>
+          ))}
+        </div>
+
+        {/* SVG Line Chart */}
+        <svg 
+          className="absolute inset-0" 
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          preserveAspectRatio="none"
+          style={{ height: `${chartHeight}px` }}
+        >
+          {/* Draw line segments with different colors */}
+          {points.map((point, index) => {
+            if (index === 0) return null;
+            const prevPoint = points[index - 1];
+            const isIncreasing = point.value >= prevPoint.value;
+            const color = isIncreasing ? '#10b981' : '#ef4444'; // green for increase, red for decrease
+            
+            return (
+              <line
+                key={index}
+                x1={`${prevPoint.x}%`}
+                y1={prevPoint.y}
+                x2={`${point.x}%`}
+                y2={point.y}
+                stroke={color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                className="transition-all duration-300"
+              />
+            );
+          })}
+
+          {/* Draw points */}
+          {points.map((point, index) => {
+            const prevValue = index > 0 ? points[index - 1].value : point.value;
+            const isIncreasing = point.value >= prevValue;
+            const color = isIncreasing ? '#10b981' : '#ef4444';
+            
+            return (
+              <g key={index}>
+                {/* Outer circle */}
+                <circle
+                  cx={`${point.x}%`}
+                  cy={point.y}
+                  r="6"
+                  fill="white"
+                  stroke={color}
+                  strokeWidth="3"
+                  className="transition-all duration-300 hover:r-8"
+                />
+                {/* Inner circle */}
+                <circle
+                  cx={`${point.x}%`}
+                  cy={point.y}
+                  r="3"
+                  fill={color}
+                  className="transition-all duration-300"
+                />
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Data points with tooltips */}
+        <div className="absolute inset-0 flex justify-between items-end" style={{ height: `${chartHeight}px` }}>
+          {safeData.map((item, index) => {
+            const point = points[index];
+            const prevValue = index > 0 ? (safeData[index - 1].sales || 0) : item.sales || 0;
+            const currentValue = item.sales || 0;
+            const isIncreasing = currentValue >= prevValue;
+            const percentChange = prevValue > 0 ? ((currentValue - prevValue) / prevValue * 100) : 0;
+            
+            return (
+              <div 
+                key={index} 
+                className="flex-1 relative group flex flex-col items-center"
+                style={{ height: `${chartHeight}px` }}
+              >
+                {/* Hover area */}
+                <div className="absolute inset-0 cursor-pointer"></div>
+                
                 {/* Tooltip */}
-                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap z-10">
-                  {formatCurrency(itemSales)}
+                <div 
+                  className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap z-20 pointer-events-none"
+                  style={{ 
+                    top: `${point.y - 60}px`,
+                    left: '50%',
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <div className="font-semibold">{formatCurrency(currentValue)}</div>
+                  {index > 0 && (
+                    <div className={`text-xs ${isIncreasing ? 'text-green-400' : 'text-red-400'}`}>
+                      {isIncreasing ? '↑' : '↓'} {Math.abs(percentChange).toFixed(1)}%
+                    </div>
+                  )}
                   <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
                 </div>
-                
-                {/* Bar */}
-                <div 
-                  className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-500 hover:from-blue-600 hover:to-blue-500 cursor-pointer"
-                  style={{ height: `${safeHeight}%`, minHeight: '8px' }}
-                />
               </div>
-              
-              {/* Value label */}
-              <div className="text-xs font-semibold text-slate-700 mt-3 mb-1">
-                {itemSales > 0 ? formatCurrency(itemSales, true) : '-'}
-              </div>
-              
-              {/* Day label */}
-              <div className="text-xs text-slate-500">
+            );
+          })}
+        </div>
+
+        {/* Labels at bottom */}
+        <div className="absolute flex justify-between w-full" style={{ top: `${chartHeight + 10}px` }}>
+          {safeData.map((item, index) => (
+            <div key={index} className="flex-1 flex flex-col items-center">
+              <div className="text-xs font-medium text-slate-600">
                 {item.day || item.date || '-'}
               </div>
+              <div className="text-xs text-slate-400 mt-1">
+                {item.sales && item.sales > 0 ? formatCurrency(item.sales, true) : '-'}
+              </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-100">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <span className="text-xs font-medium text-slate-600">Peningkatan</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+          <span className="text-xs font-medium text-slate-600">Penurunan</span>
+        </div>
       </div>
     </div>
   );
@@ -252,35 +387,35 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="space-y-8">
-      {/* Professional Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div className="mb-4 sm:mb-0">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Dashboard</h1>
-          <p className="text-slate-600 max-w-2xl">
-            Selamat datang di sistem manajemen toko profesional. Monitor performa bisnis Anda secara real-time.
+    <div className="space-y-6 md:space-y-8">
+      {/* Professional Header - Mobile Optimized */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="mb-2 sm:mb-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Dashboard</h1>
+          <p className="text-sm md:text-base text-slate-900 max-w-2xl">
+            Monitor performa bisnis Anda secara real-time.
           </p>
         </div>
         <div className="flex flex-col sm:items-end space-y-2">
           <div className="flex items-center space-x-3">
             {isLoading && (
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-4 w-4 md:h-5 md:w-5 border-2 border-blue-600 border-t-transparent"></div>
             )}
-            <div className="px-3 py-1.5 bg-slate-100 rounded-full">
-              <span className="text-sm font-medium text-slate-700">
+            <div className="px-2.5 md:px-3 py-1 md:py-1.5 bg-slate-100 rounded-full">
+              <span className="text-xs md:text-sm font-medium text-slate-700">
                 {lastUpdated.toLocaleTimeString('id-ID')}
               </span>
             </div>
           </div>
-          <div className="flex items-center text-sm text-slate-500">
+          <div className="flex items-center text-xs md:text-sm text-slate-500">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>
             Auto-refresh setiap 15 detik
           </div>
         </div>
       </div>
 
-      {/* Professional Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      {/* Professional Stats Grid - Mobile Optimized */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
         <ProfessionalStatsCard
           title="Total Penjualan"
           value={formatCurrency(stats?.totalSales || 0, true)}
@@ -311,8 +446,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Charts and Alerts Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      {/* Charts and Alerts Grid - Mobile Optimized */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
         {/* Sales Chart - Takes 2 columns */}
         <div className="xl:col-span-2">
           <ProfessionalChart data={chartData} />

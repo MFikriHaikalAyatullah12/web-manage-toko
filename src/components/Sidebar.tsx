@@ -78,7 +78,44 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const { logout } = useAuth();
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    // Close sidebar on left swipe
+    if (isLeftSwipe && isOpen) {
+      setIsOpen(false);
+    }
+    
+    // Open sidebar on right swipe from edge
+    if (isRightSwipe && !isOpen && touchStart < 50) {
+      setIsOpen(true);
+    }
+  };
+
+  // Close sidebar when clicking outside on mobile
+  const handleOverlayClick = () => {
+    setIsOpen(false);
+  };
 
   const handleResetData = async () => {
     try {
@@ -98,11 +135,12 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
+      {/* Mobile menu button - Enhanced touch target */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="p-2.5 bg-slate-800 text-white rounded-xl shadow-lg hover:bg-slate-700 transition-colors"
+          className="p-3 min-h-[44px] min-w-[44px] bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
+          aria-label="Toggle menu"
         >
           {isOpen ? (
             <XMarkIcon className="h-6 w-6" />
@@ -112,29 +150,50 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-slate-800 shadow-2xl transform transition-transform duration-300 ease-out
+      {/* Mobile overlay with backdrop blur */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 z-30 backdrop-blur-sm transition-opacity duration-300"
+          onClick={handleOverlayClick}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        />
+      )}
+
+      {/* Sidebar with swipe gesture support */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className={`
+        fixed inset-y-0 left-0 z-40 w-72 shadow-2xl transform transition-transform duration-300 ease-out glass
         lg:translate-x-0 lg:static lg:inset-0
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+      `} style={{
+        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        backdropFilter: 'blur(10px)'
+      }}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center px-6 py-6 bg-gradient-to-r from-blue-600 to-blue-700 border-b border-slate-700">
+          <div className="flex items-center px-6 py-6 border-b border-slate-700/50" style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-white bg-opacity-20 rounded-xl">
+              <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm shadow-lg float">
                 <StoreIcon className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Manage Toko</h1>
-                <p className="text-xs text-blue-100 opacity-90">Sistem Manajemen</p>
+                <h1 className="text-xl font-bold text-white tracking-wide">Manage Toko</h1>
+                <p className="text-xs text-white/80 font-medium">Sistem Manajemen</p>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-4">
+            <div className="text-xs font-bold text-white/50 uppercase tracking-widest px-3 mb-4 flex items-center">
+              <div className="w-8 h-0.5 bg-gradient-to-r from-purple-500 to-transparent mr-2"></div>
               Menu Utama
             </div>
             {navigation.map((item) => {
@@ -145,20 +204,27 @@ export default function Sidebar() {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={`
-                    group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200
+                    group flex items-center px-4 py-3.5 text-sm font-semibold rounded-xl transition-all duration-300 relative overflow-hidden
                     ${isActive
-                      ? 'bg-blue-600 text-white shadow-lg transform scale-105'
-                      : 'text-slate-300 hover:bg-slate-700 hover:text-white hover:scale-102'
+                      ? 'text-white shadow-xl scale-105'
+                      : 'text-slate-300 hover:text-white hover:scale-102'
                     }
                   `}
+                  style={isActive ? {
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)'
+                  } : {}}
                 >
-                  <item.icon className={`mr-4 h-5 w-5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                  {!isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-700/0 via-slate-700/50 to-slate-700/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  )}
+                  <item.icon className={`mr-4 h-5 w-5 flex-shrink-0 relative z-10 ${
+                    isActive ? 'text-white drop-shadow-lg' : 'text-slate-400 group-hover:text-white'
                   }`} />
-                  <span className="truncate">{item.name}</span>
+                  <span className="truncate relative z-10">{item.name}</span>
                   {isActive && (
-                    <div className="ml-auto">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    <div className="ml-auto relative z-10">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-lg"></div>
                     </div>
                   )}
                 </Link>
@@ -167,37 +233,40 @@ export default function Sidebar() {
           </nav>
 
           {/* Action Buttons */}
-          <div className="px-4 py-4 space-y-2 border-t border-slate-700">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-3">
+          <div className="px-4 py-4 space-y-2 border-t border-slate-700/50">
+            <div className="text-xs font-bold text-white/50 uppercase tracking-widest px-3 mb-3 flex items-center">
+              <div className="w-8 h-0.5 bg-gradient-to-r from-red-500 to-transparent mr-2"></div>
               Tindakan
             </div>
             <button
               onClick={() => setShowResetConfirm(true)}
-              className="w-full flex items-center px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-600 hover:bg-opacity-20 hover:text-red-300 rounded-xl transition-all duration-200 group"
+              className="w-full flex items-center px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-600/20 hover:text-red-300 rounded-xl transition-all duration-300 group relative overflow-hidden"
             >
-              <TrashIcon className="mr-4 h-5 w-5 flex-shrink-0" />
-              Reset Data
+              <div className="absolute inset-0 bg-gradient-to-r from-red-600/0 via-red-600/20 to-red-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <TrashIcon className="mr-4 h-5 w-5 flex-shrink-0 relative z-10" />
+              <span className="relative z-10">Reset Data</span>
             </button>
             
             <button
               onClick={logout}
-              className="w-full flex items-center px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl transition-all duration-200 group"
+              className="w-full flex items-center px-4 py-3 text-sm font-semibold text-slate-300 hover:text-white rounded-xl transition-all duration-300 group relative overflow-hidden"
             >
-              <LogoutIcon className="mr-4 h-5 w-5 flex-shrink-0" />
-              Logout
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-700/0 via-slate-700/50 to-slate-700/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <LogoutIcon className="mr-4 h-5 w-5 flex-shrink-0 relative z-10" />
+              <span className="relative z-10">Logout</span>
             </button>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-slate-700 bg-slate-900">
+          <div className="px-6 py-4 border-t border-slate-700/50 bg-gradient-to-b from-transparent to-black/30">
             <div className="flex items-center space-x-3">
               <div className="flex-1">
-                <p className="text-xs text-slate-400">© 2025 Manage Toko</p>
+                <p className="text-xs text-slate-400 font-medium">© 2026 Manage Toko</p>
                 <p className="text-xs text-slate-500">Professional Edition</p>
               </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-xs text-green-400">Live</span>
+              <div className="flex items-center space-x-1.5">
+                <div className="status-dot status-online"></div>
+                <span className="text-xs text-green-400 font-semibold">Live</span>
               </div>
             </div>
           </div>

@@ -46,6 +46,7 @@ export async function initializeDatabase() {
         product_name VARCHAR(255) NOT NULL,
         quantity INTEGER NOT NULL,
         price DECIMAL(10,2) NOT NULL,
+        cost DECIMAL(10,2) DEFAULT 0,
         subtotal DECIMAL(10,2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

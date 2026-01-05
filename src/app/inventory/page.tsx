@@ -134,16 +134,31 @@ export default function InventoryPage() {
   };
 
   const handleDeleteProduct = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return;
+    const product = products.find(p => p.id === id);
+    if (!confirm(`Apakah Anda yakin ingin menghapus produk "${product?.name}"?\n\nAksi ini tidak dapat dibatalkan.`)) return;
     
     setIsLoading(true);
     try {
-      await deleteProduct(id.toString());
-      const productsData = await fetchProducts();
-      setProducts(productsData);
-      setLastUpdated(new Date());
+      const result = await deleteProduct(id.toString());
+      if (result) {
+        // Force refresh products data with no-cache
+        const productsData = await fetch('/api/products', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }).then(res => res.json());
+        
+        setProducts(productsData);
+        setLastUpdated(new Date());
+        alert(`Produk "${product?.name}" berhasil dihapus!`);
+      } else {
+        alert('Gagal menghapus produk. Silakan coba lagi.');
+      }
     } catch (error) {
       console.error('Error deleting product:', error);
+      alert('Terjadi kesalahan saat menghapus produk. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -229,8 +244,8 @@ export default function InventoryPage() {
       {/* Professional Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Manajemen Stok</h1>
-          <p className="text-slate-600">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Manajemen Stok</h1>
+          <p className="text-slate-900">
             Kelola inventory, tambah produk baru, dan input pembelian dengan tracking real-time
           </p>
         </div>
@@ -250,9 +265,9 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Professional Tabs */}
+      {/* Professional Tabs - Mobile Optimized */}
       <div className="bg-white rounded-2xl p-1 card-shadow-lg">
-        <nav className="flex space-x-1">
+        <nav className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1">
           {[
             { key: 'products', label: 'Daftar Produk', icon: '📦' },
             { key: 'add-product', label: 'Tambah Produk', icon: '➕' },
@@ -261,14 +276,14 @@ export default function InventoryPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as 'products' | 'add-product' | 'purchase')}
-              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+              className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 min-h-[44px] text-sm font-medium rounded-xl transition-all duration-200 active:scale-95 ${
                 activeTab === tab.key
                   ? 'bg-blue-600 text-white shadow-md'
                   : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
               }`}
             >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
+              <span className="text-base md:text-lg">{tab.icon}</span>
+              <span className="text-xs sm:text-sm">{tab.label}</span>
             </button>
           ))}
         </nav>
@@ -277,12 +292,12 @@ export default function InventoryPage() {
       {/* Tab Content */}
       {activeTab === 'products' && (
         <div className="bg-white rounded-2xl card-shadow-lg">
-          {/* Search Header */}
-          <div className="p-6 border-b border-slate-100">
+          {/* Search Header - Mobile Optimized */}
+          <div className="p-4 md:p-6 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <div>
-                <h2 className="text-xl font-semibold text-slate-800">Daftar Produk</h2>
-                <p className="text-sm text-slate-600 mt-1">{filteredProducts.length} produk tersedia</p>
+                <h2 className="text-lg md:text-xl font-semibold text-slate-800">Daftar Produk</h2>
+                <p className="text-xs md:text-sm text-slate-600 mt-1">{filteredProducts.length} produk tersedia</p>
               </div>
               <div className="relative max-w-md w-full sm:w-auto">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -446,8 +461,8 @@ export default function InventoryPage() {
       {activeTab === 'add-product' && (
         <div className="bg-white rounded-2xl p-8 card-shadow-lg">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Tambah Produk Baru</h2>
-            <p className="text-slate-600">Masukkan detail produk untuk menambahkan ke inventory</p>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Tambah Produk Baru</h2>
+            <p className="text-slate-900">Masukkan detail produk untuk menambahkan ke inventory</p>
           </div>
 
           <form onSubmit={handleAddProduct} className="space-y-6">
@@ -600,8 +615,8 @@ export default function InventoryPage() {
       {activeTab === 'purchase' && (
         <div className="bg-white rounded-2xl p-8 card-shadow-lg">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Input Pembelian</h2>
-            <p className="text-slate-600">Catat pembelian barang untuk menambah stok</p>
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Input Pembelian</h2>
+            <p className="text-slate-900">Catat pembelian barang untuk menambah stok</p>
           </div>
 
           <form onSubmit={handleAddPurchase} className="space-y-6">

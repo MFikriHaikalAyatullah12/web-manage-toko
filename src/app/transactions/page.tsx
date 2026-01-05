@@ -177,8 +177,8 @@ export default function TransactionsPage() {
       {/* Professional Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Transaksi Penjualan</h1>
-          <p className="text-slate-600">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Transaksi Penjualan</h1>
+          <p className="text-slate-900">
             Input penjualan produk dengan stok real-time dan validasi otomatis
           </p>
         </div>
@@ -200,13 +200,13 @@ export default function TransactionsPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Product Selection - Takes 2 columns */}
-        <div className="xl:col-span-2 bg-white rounded-2xl p-6 card-shadow-lg">
-          <div className="flex items-center justify-between mb-6">
+        <div className="xl:col-span-2 bg-white rounded-2xl p-4 md:p-6 card-shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-slate-800">Pilih Produk</h2>
-              <p className="text-sm text-slate-600 mt-1">Klik produk untuk menambah ke keranjang</p>
+              <h2 className="text-lg md:text-xl font-semibold text-slate-800">Pilih Produk</h2>
+              <p className="text-xs md:text-sm text-slate-600 mt-1">Klik produk untuk menambah ke keranjang</p>
             </div>
-            <div className="text-sm text-slate-500">
+            <div className="text-xs md:text-sm text-slate-500">
               {filteredProducts.length} produk tersedia
             </div>
           </div>
@@ -221,16 +221,16 @@ export default function TransactionsPage() {
               </div>
               <input
                 type="text"
-                placeholder="Cari produk berdasarkan nama atau kategori..."
+                placeholder="Cari produk..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 placeholder-slate-500 transition-colors"
+                className="block w-full pl-10 pr-4 py-3 text-sm md:text-base border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 placeholder-slate-500 transition-colors"
               />
             </div>
           </div>
 
-          {/* Professional Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+          {/* Professional Product Grid - Responsive */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 max-h-[400px] md:max-h-96 overflow-y-auto">
             {filteredProducts.map((product) => {
               const cartQuantity = cart.find(item => item.productId === product.id)?.quantity || 0;
               const isOutOfStock = product.stock <= 0;
@@ -239,7 +239,7 @@ export default function TransactionsPage() {
               return (
                 <div
                   key={product.id}
-                  className={`group p-4 border-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                  className={`group p-3 md:p-4 border-2 rounded-xl transition-all duration-200 cursor-pointer active:scale-95 ${
                     isOutOfStock 
                       ? 'border-red-200 bg-red-50 cursor-not-allowed' 
                       : isMaxQuantity
@@ -304,19 +304,19 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        {/* Professional Cart */}
-        <div className="bg-white rounded-2xl p-6 card-shadow-lg">
+        {/* Professional Cart - Mobile Optimized */}
+        <div className="bg-white rounded-2xl p-4 md:p-6 card-shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-xl font-semibold text-slate-800">Keranjang</h2>
-              <p className="text-sm text-slate-600 mt-1">
+              <h2 className="text-lg md:text-xl font-semibold text-slate-800">Keranjang</h2>
+              <p className="text-xs md:text-sm text-slate-600 mt-1">
                 {cart.length} item{cart.length !== 1 ? 's' : ''}
               </p>
             </div>
             {cart.length > 0 && (
               <button
                 onClick={() => setCart([])}
-                className="text-sm text-red-600 hover:text-red-700 font-medium"
+                className="text-xs md:text-sm text-red-600 hover:text-red-700 font-medium min-h-[44px] px-3"
               >
                 Kosongkan
               </button>
@@ -324,29 +324,29 @@ export default function TransactionsPage() {
           </div>
 
           {cart.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center py-8 md:py-12">
+              <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 bg-slate-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 md:w-8 md:h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6" />
                 </svg>
               </div>
-              <p className="text-slate-600 font-medium">Keranjang kosong</p>
-              <p className="text-sm text-slate-500 mt-1">Tambahkan produk untuk memulai transaksi</p>
+              <p className="text-sm md:text-base text-slate-600 font-medium">Keranjang kosong</p>
+              <p className="text-xs md:text-sm text-slate-500 mt-1">Tambahkan produk untuk memulai transaksi</p>
             </div>
           ) : (
             <>
-              {/* Cart Items */}
-              <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
+              {/* Cart Items - Touch Optimized */}
+              <div className="space-y-3 mb-6 max-h-[350px] md:max-h-64 overflow-y-auto">
                 {cart.map((item) => (
-                  <div key={item.productId} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <div key={item.productId} className="p-3 md:p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-slate-800 text-sm truncate">{item.productName}</h4>
+                        <h4 className="font-medium text-slate-800 text-xs md:text-sm truncate">{item.productName}</h4>
                         <p className="text-xs text-slate-600 mt-1">
                           {formatCurrency(item.price)} × {item.quantity}
                         </p>
                       </div>
-                      <div className="flex items-center text-sm font-bold text-slate-800 ml-4">
+                      <div className="flex items-center text-xs md:text-sm font-bold text-slate-800 ml-4">
                         {formatCurrency(item.total)}
                       </div>
                     </div>

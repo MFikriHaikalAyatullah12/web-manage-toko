@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const profitResult = await query(`
       SELECT 
         DATE(t.created_at) as date,
-        COALESCE(SUM(ti.quantity * (ti.price - ti.cost)), 0) as profit
+        COALESCE(SUM(ti.quantity * (ti.price - COALESCE(ti.cost, 0))), 0) as profit
       FROM transactions t
       JOIN transaction_items ti ON t.id = ti.transaction_id
       WHERE t.created_at >= CURRENT_DATE - INTERVAL '${daysBack} days'
@@ -113,8 +113,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(chartData);
   } catch (error) {
     console.error('Error getting chart data:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { error: 'Failed to get chart data' },
+      { 
+        error: 'Failed to get chart data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

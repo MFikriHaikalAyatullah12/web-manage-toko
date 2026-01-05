@@ -12,9 +12,9 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen relative">
       <Sidebar />
-      <main className="flex-1 lg:ml-0">
+      <main className="flex-1 lg:ml-0 relative z-10">
         <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-6 max-w-7xl mx-auto">
           <div className="fade-in">
             {children}
