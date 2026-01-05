@@ -51,7 +51,6 @@ const ProfessionalChart = ({ data }: { data: ChartData[] }) => {
   };
 
   // Build SVG path for the line
-  let pathData = '';
   const points: Array<{ x: number; y: number; value: number; increasing: boolean }> = [];
   
   safeData.forEach((item, index) => {
@@ -62,12 +61,6 @@ const ProfessionalChart = ({ data }: { data: ChartData[] }) => {
     const increasing = value >= prevValue;
     
     points.push({ x, y, value, increasing });
-    
-    if (index === 0) {
-      pathData += `M ${x} ${y}`;
-    } else {
-      pathData += ` L ${x} ${y}`;
-    }
   });
 
   return (

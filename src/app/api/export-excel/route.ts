@@ -109,8 +109,8 @@ export async function GET() {
     const workbook = XLSX.utils.book_new();
 
     // Format currency helper
-    const formatCurrency = (value: any) => {
-      const num = parseFloat(value || 0);
+    const formatCurrency = (value: string | number) => {
+      const num = parseFloat(String(value || 0));
       return num.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
     };
 

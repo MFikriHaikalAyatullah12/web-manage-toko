@@ -397,15 +397,12 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         const totalSales = allSalesData.total_sales ? parseFloat(allSalesData.total_sales) : 0;
         const totalCosts = allSalesData.total_costs ? parseFloat(allSalesData.total_costs) : 0;
         const todaySales = todayData.today_sales ? parseFloat(todayData.today_sales) : 0;
-        const todayCosts = todayData.today_costs ? parseFloat(todayData.today_costs) : 0;
 
         const safeTotalSales = isNaN(totalSales) ? 0 : totalSales;
         const safeTotalCosts = isNaN(totalCosts) ? 0 : totalCosts;
         const safeTodaySales = isNaN(todaySales) ? 0 : todaySales;
-        const safeTodayCosts = isNaN(todayCosts) ? 0 : todayCosts;
 
         const totalProfit = safeTotalSales - safeTotalCosts;
-        const todayProfit = safeTodaySales - safeTodayCosts;
         const safeLowStock = productsData.low_stock_count ? parseInt(productsData.low_stock_count) : 0;
 
         return {

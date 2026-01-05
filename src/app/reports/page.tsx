@@ -216,11 +216,11 @@ export default function ReportsPage() {
                   <div key={purchase.id} className="bg-amber-50 rounded-xl p-4 border border-amber-200">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <div className="text-sm font-medium text-amber-800">{purchase.product_name}</div>
+                        <div className="text-sm font-medium text-amber-800">{purchase.productName}</div>
                         <div className="text-xs text-amber-600 mt-1">{formatDate(purchase.date)}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-bold text-amber-800">{formatCurrency(purchase.cost)}</div>
+                        <div className="text-sm font-bold text-amber-800">{formatCurrency(purchase.price)}</div>
                         <div className="text-xs text-amber-600 mt-1">{purchase.quantity} unit</div>
                       </div>
                     </div>

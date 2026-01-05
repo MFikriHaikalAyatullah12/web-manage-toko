@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { query, initializeDatabase } from '@/lib/postgresql';
 
 // Initialize database on first request

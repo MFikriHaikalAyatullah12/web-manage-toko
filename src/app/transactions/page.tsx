@@ -102,10 +102,6 @@ export default function TransactionsPage() {
     return cart.reduce((sum, item) => sum + item.total, 0);
   };
 
-  const calculateTax = () => {
-    return calculateSubtotal() * 0.1; // 10% tax
-  };
-
   const calculateTotal = () => {
     return calculateSubtotal() - discount;
   };

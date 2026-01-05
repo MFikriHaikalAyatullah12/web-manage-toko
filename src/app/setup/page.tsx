@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { setupDatabase } from '@/lib/setup';
 
 export default function SetupPage() {
   const [isLoading, setIsLoading] = useState(false);
