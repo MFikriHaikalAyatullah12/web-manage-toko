@@ -105,13 +105,22 @@ export async function getClient() {
   return await pool.connect();
 }
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  pool.end();
-});
+// Graceful shutdown - only end pool once on process exit
+let isShuttingDown = false;
 
-process.on('SIGTERM', () => {
-  pool.end();
-});
+const gracefulShutdown = async () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  try {
+    await pool.end();
+    console.log('Database pool closed');
+  } catch (error) {
+    console.error('Error closing database pool:', error);
+  }
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
 
 export default pool;
