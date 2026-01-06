@@ -11,15 +11,25 @@ export async function initializeDatabase() {
   const client = await pool.connect();
   
   try {
+    // Drop existing tables if they exist (to ensure clean setup)
+    await client.query(`
+      DROP TABLE IF EXISTS transaction_items CASCADE;
+      DROP TABLE IF EXISTS transactions CASCADE;
+      DROP TABLE IF EXISTS purchases CASCADE;
+      DROP TABLE IF EXISTS products CASCADE;
+    `);
+
     // Create products table
     await client.query(`
-      CREATE TABLE IF NOT EXISTS products (
+      CREATE TABLE products (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        price DECIMAL(10,2) NOT NULL DEFAULT 0,
-        stock INTEGER NOT NULL DEFAULT 0,
-        category VARCHAR(100),
-        description TEXT,
+        category VARCHAR(100) NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        cost DECIMAL(10,2) DEFAULT 0,
+        stock INTEGER DEFAULT 0,
+        min_stock INTEGER DEFAULT 0,
+        supplier VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -27,45 +37,76 @@ export async function initializeDatabase() {
 
     // Create transactions table
     await client.query(`
-      CREATE TABLE IF NOT EXISTS transactions (
+      CREATE TABLE transactions (
         id SERIAL PRIMARY KEY,
-        date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        total DECIMAL(10,2) NOT NULL DEFAULT 0,
-        payment_method VARCHAR(50) DEFAULT 'cash',
-        notes TEXT,
+        subtotal DECIMAL(10,2) NOT NULL,
+        tax DECIMAL(10,2) DEFAULT 0,
+        discount DECIMAL(10,2) DEFAULT 0,
+        total DECIMAL(10,2) NOT NULL,
+        cashier_id VARCHAR(50) NOT NULL,
+        cashier_name VARCHAR(255) NOT NULL,
+        payment_method VARCHAR(20) CHECK (payment_method IN ('cash', 'card', 'transfer')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
     // Create transaction_items table for transaction details
     await client.query(`
-      CREATE TABLE IF NOT EXISTS transaction_items (
+      CREATE TABLE transaction_items (
         id SERIAL PRIMARY KEY,
         transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id),
         product_name VARCHAR(255) NOT NULL,
         quantity INTEGER NOT NULL,
         price DECIMAL(10,2) NOT NULL,
-        cost DECIMAL(10,2) DEFAULT 0,
-        subtotal DECIMAL(10,2) NOT NULL,
+        cost DECIMAL(10,2) NOT NULL,
+        total DECIMAL(10,2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
     // Create purchases table
     await client.query(`
-      CREATE TABLE IF NOT EXISTS purchases (
+      CREATE TABLE purchases (
         id SERIAL PRIMARY KEY,
         product_id INTEGER REFERENCES products(id),
         product_name VARCHAR(255) NOT NULL,
         quantity INTEGER NOT NULL,
-        price DECIMAL(10,2) NOT NULL,
+        cost DECIMAL(10,2) NOT NULL,
         total DECIMAL(10,2) NOT NULL,
         supplier VARCHAR(255),
-        date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Create indexes for better performance
+    await client.query(`
+      CREATE INDEX idx_products_name ON products(name);
+      CREATE INDEX idx_products_category ON products(category);
+      CREATE INDEX idx_transactions_created_at ON transactions(created_at);
+      CREATE INDEX idx_transaction_items_transaction_id ON transaction_items(transaction_id);
+      CREATE INDEX idx_transaction_items_product_id ON transaction_items(product_id);
+      CREATE INDEX idx_purchases_created_at ON purchases(created_at);
+      CREATE INDEX idx_purchases_product_id ON purchases(product_id);
+    `);
+
+    // Create function to update updated_at timestamp
+    await client.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+    `);
+
+    // Create trigger for products table
+    await client.query(`
+      CREATE TRIGGER update_products_updated_at 
+        BEFORE UPDATE ON products 
+        FOR EACH ROW 
+        EXECUTE FUNCTION update_updated_at_column();
     `);
 
     // No sample data - users will add their own products

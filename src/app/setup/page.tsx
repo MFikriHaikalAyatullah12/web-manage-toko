@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 export default function SetupPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -34,6 +35,41 @@ export default function SetupPage() {
     }
   };
 
+  const handleReset = async () => {
+    if (!confirm('PERINGATAN: Ini akan menghapus SEMUA data (produk, transaksi, pembelian). Apakah Anda yakin?')) {
+      return;
+    }
+    
+    setIsResetting(true);
+    setMessage('');
+    
+    try {
+      const result = await fetch('/api/reset-database', {
+        method: 'POST',
+      });
+      
+      const data = await result.json();
+      
+      if (data.success) {
+        setMessage('Database berhasil direset! Semua data telah dihapus.');
+        setIsSuccess(true);
+        
+        // Reload page after 2 seconds
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+      } else {
+        setMessage(`Error: ${data.error}`);
+        setIsSuccess(false);
+      }
+    } catch (error) {
+      setMessage(`Error: ${error}`);
+      setIsSuccess(false);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
@@ -45,17 +81,31 @@ export default function SetupPage() {
             Klik tombol di bawah untuk membuat tabel dan data awal di database PostgreSQL Neon.
           </p>
           
-          <button
-            onClick={handleSetup}
-            disabled={isLoading}
-            className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
-              isLoading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {isLoading ? 'Setting up...' : 'Setup Database'}
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={handleSetup}
+              disabled={isLoading || isResetting}
+              className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
+                isLoading || isResetting
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {isLoading ? 'Setting up...' : 'Setup Database'}
+            </button>
+            
+            <button
+              onClick={handleReset}
+              disabled={isLoading || isResetting}
+              className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
+                isLoading || isResetting
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              {isResetting ? 'Resetting...' : 'Reset Database (Hapus Semua Data)'}
+            </button>
+          </div>
           
           {message && (
             <div className={`mt-4 p-4 rounded-lg ${
@@ -67,7 +117,7 @@ export default function SetupPage() {
             </div>
           )}
           
-          {isSuccess && (
+          {isSuccess && !isResetting && (
             <div className="mt-4">
               <Link
                 href="/"

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "init-db": "node scripts/init-db.mjs",
-    "db:setup": "npm run init-db"
+    "db:setup": "npm run init-db",
+    "db:reset": "node scripts/reset-database.mjs"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",

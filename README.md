@@ -64,12 +64,34 @@ Sistem manajemen toko online yang lengkap dengan tracking real-time untuk stok, 
    ```bash
    npm install
    ```
+4. Setup database (pertama kali):
+   - Buka browser dan akses `/setup`
+   - Klik tombol "Setup Database"
+   - Atau jalankan: `npm run db:setup`
 
 ### Menjalankan Development Server
 ```bash
 npm run dev
 ```
 Aplikasi akan berjalan di `http://localhost:3000`
+
+### Menghapus Data/Reset Database
+Jika Anda ingin menghapus semua data dan mulai dari awal:
+
+**Melalui Web Interface:**
+1. Buka `/setup` di browser
+2. Klik tombol **"Reset Database (Hapus Semua Data)"**
+3. Konfirmasi penghapusan
+4. Semua produk dan transaksi akan terhapus
+
+**Melalui Terminal:**
+```bash
+npm run db:reset
+```
+
+⚠️ **PERINGATAN**: Reset akan menghapus SEMUA data (produk, transaksi, pembelian)
+
+Lihat [HAPUS_PRODUK_TEMPLATE.md](./HAPUS_PRODUK_TEMPLATE.md) untuk panduan lengkap.
 
 ### Build untuk Production
 ```bash
