@@ -133,18 +133,18 @@ export async function GET() {
     };
 
     // Sheet 1: Barang Masuk
-    const purchasesData = purchases.rows.map(row => ({
-      'Tanggal': row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-',
-      'Nama Produk': row.nama_produk || '-',
-      'Kategori': row.kategori || '-',
-      'Jumlah Beli': row.jumlah || 0,
-      'Harga Satuan': formatCurrency(row.harga_satuan),
-      'Total Harga': formatCurrency(row.total_harga),
-      'Supplier': row.supplier || '-',
-      'Stok Minimum': row.stok_minimum || 0,
-      'Stok Saat Ini': row.stok_saat_ini || 0,
-      'Harga Jual': formatCurrency(row.harga_jual),
-      'Harga Beli': formatCurrency(row.harga_beli)
+    const purchasesData = purchases.rows.map((row: Record<string, unknown>) => ({
+      'Tanggal': row.tanggal ? new Date(row.tanggal as string).toLocaleDateString('id-ID') : '-',
+      'Nama Produk': (row.nama_produk as string) || '-',
+      'Kategori': (row.kategori as string) || '-',
+      'Jumlah Beli': (row.jumlah as number) || 0,
+      'Harga Satuan': formatCurrency(row.harga_satuan as number),
+      'Total Harga': formatCurrency(row.total_harga as number),
+      'Supplier': (row.supplier as string) || '-',
+      'Stok Minimum': (row.stok_minimum as number) || 0,
+      'Stok Saat Ini': (row.stok_saat_ini as number) || 0,
+      'Harga Jual': formatCurrency(row.harga_jual as number),
+      'Harga Beli': formatCurrency(row.harga_beli as number)
     }));
     const ws1 = XLSX.utils.json_to_sheet(purchasesData);
     ws1['!cols'] = [
@@ -155,14 +155,14 @@ export async function GET() {
     XLSX.utils.book_append_sheet(workbook, ws1, 'Barang Masuk');
 
     // Sheet 2: Penjualan
-    const salesData = transactions.rows.map(row => ({
-      'Tanggal': row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-',
-      'Nama Produk': row.nama_produk || '-',
-      'Kategori': row.kategori || '-',
-      'Jumlah': row.jumlah || 0,
-      'Harga Satuan': formatCurrency(row.harga_satuan),
-      'Total Harga': formatCurrency(row.total_harga),
-      'Metode Pembayaran': row.metode_pembayaran || '-'
+    const salesData = transactions.rows.map((row: Record<string, unknown>) => ({
+      'Tanggal': row.tanggal ? new Date(row.tanggal as string).toLocaleDateString('id-ID') : '-',
+      'Nama Produk': (row.nama_produk as string) || '-',
+      'Kategori': (row.kategori as string) || '-',
+      'Jumlah': (row.jumlah as number) || 0,
+      'Harga Satuan': formatCurrency(row.harga_satuan as number),
+      'Total Harga': formatCurrency(row.total_harga as number),
+      'Metode Pembayaran': (row.metode_pembayaran as string) || '-'
     }));
     const ws2 = XLSX.utils.json_to_sheet(salesData);
     ws2['!cols'] = [
@@ -172,15 +172,15 @@ export async function GET() {
     XLSX.utils.book_append_sheet(workbook, ws2, 'Penjualan');
 
     // Sheet 3: Ringkasan Keuntungan
-    const summaryData = summary.rows.map(row => ({
-      'Tanggal': row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-',
-      'Jumlah Transaksi': row.jumlah_transaksi || 0,
-      'Total Item Terjual': row.total_item_terjual || 0,
-      'Total Penjualan': formatCurrency(row.total_penjualan),
-      'Total Modal': formatCurrency(row.total_modal),
-      'Keuntungan Bersih': formatCurrency(row.keuntungan_bersih),
-      'Margin (%)': row.total_penjualan > 0 
-        ? ((parseFloat(row.keuntungan_bersih) / parseFloat(row.total_penjualan)) * 100).toFixed(2) + '%'
+    const summaryData = summary.rows.map((row: Record<string, unknown>) => ({
+      'Tanggal': row.tanggal ? new Date(row.tanggal as string).toLocaleDateString('id-ID') : '-',
+      'Jumlah Transaksi': (row.jumlah_transaksi as number) || 0,
+      'Total Item Terjual': (row.total_item_terjual as number) || 0,
+      'Total Penjualan': formatCurrency(row.total_penjualan as number),
+      'Total Modal': formatCurrency(row.total_modal as number),
+      'Keuntungan Bersih': formatCurrency(row.keuntungan_bersih as number),
+      'Margin (%)': (row.total_penjualan as number) > 0 
+        ? ((parseFloat(String(row.keuntungan_bersih)) / parseFloat(String(row.total_penjualan))) * 100).toFixed(2) + '%'
         : '0%'
     }));
     const ws3 = XLSX.utils.json_to_sheet(summaryData);
@@ -191,26 +191,26 @@ export async function GET() {
     XLSX.utils.book_append_sheet(workbook, ws3, 'Keuntungan');
 
     // Sheet 4: Penjualan Harian
-    const dailyData = dailySales.rows.map(row => ({
-      'Tanggal': row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-',
-      'Hari': row.hari ? row.hari.trim() : '-',
-      'Jumlah Transaksi': row.jumlah_transaksi || 0,
-      'Total Penjualan': formatCurrency(row.total_penjualan)
+    const dailyData = dailySales.rows.map((row: Record<string, unknown>) => ({
+      'Tanggal': row.tanggal ? new Date(row.tanggal as string).toLocaleDateString('id-ID') : '-',
+      'Hari': row.hari ? String(row.hari).trim() : '-',
+      'Jumlah Transaksi': (row.jumlah_transaksi as number) || 0,
+      'Total Penjualan': formatCurrency(row.total_penjualan as number)
     }));
     const ws4 = XLSX.utils.json_to_sheet(dailyData);
     ws4['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(workbook, ws4, 'Penjualan Harian');
 
     // Sheet 5: Stok Menipis
-    const lowStockData = lowStock.rows.map(row => ({
-      'Nama Produk': row.nama_produk || '-',
-      'Kategori': row.kategori || '-',
-      'Stok Saat Ini': row.stok_saat_ini || 0,
-      'Stok Minimum': row.stok_minimum || 0,
-      'Kekurangan': row.kekurangan || 0,
-      'Harga Jual': formatCurrency(row.harga_jual),
-      'Harga Modal': formatCurrency(row.harga_modal),
-      'Supplier': row.supplier || '-'
+    const lowStockData = lowStock.rows.map((row: Record<string, unknown>) => ({
+      'Nama Produk': (row.nama_produk as string) || '-',
+      'Kategori': (row.kategori as string) || '-',
+      'Stok Saat Ini': (row.stok_saat_ini as number) || 0,
+      'Stok Minimum': (row.stok_minimum as number) || 0,
+      'Kekurangan': (row.kekurangan as number) || 0,
+      'Harga Jual': formatCurrency(row.harga_jual as number),
+      'Harga Modal': formatCurrency(row.harga_modal as number),
+      'Supplier': (row.supplier as string) || '-'
     }));
     const ws5 = XLSX.utils.json_to_sheet(lowStockData);
     ws5['!cols'] = [

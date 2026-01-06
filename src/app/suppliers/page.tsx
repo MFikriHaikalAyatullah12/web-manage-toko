@@ -9,6 +9,25 @@ interface SupplierWithStats extends Supplier {
   total_purchases?: number;
 }
 
+interface ViewingSupplierData {
+  supplier: SupplierWithStats;
+  products: Array<{
+    id: number;
+    name: string;
+    category: string;
+    stock: number;
+    price: number;
+  }>;
+  purchases: Array<{
+    id: number;
+    created_at: string;
+    product_name: string;
+    quantity: number;
+    unit?: string;
+    total: number;
+  }>;
+}
+
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<SupplierWithStats[]>([]);
   const [filteredSuppliers, setFilteredSuppliers] = useState<SupplierWithStats[]>([]);
@@ -16,7 +35,7 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [viewingSupplier, setViewingSupplier] = useState<any>(null);
+  const [viewingSupplier, setViewingSupplier] = useState<ViewingSupplierData | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     contact_person: '',
@@ -454,7 +473,7 @@ export default function SuppliersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {viewingSupplier.products.map((product: any) => (
+                      {viewingSupplier.products.map((product: ViewingSupplierData['products'][0]) => (
                         <tr key={product.id} className="border-b border-slate-200">
                           <td className="px-4 py-2 text-sm">{product.name}</td>
                           <td className="px-4 py-2 text-sm">{product.category}</td>
@@ -484,7 +503,7 @@ export default function SuppliersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {viewingSupplier.purchases.map((purchase: any) => (
+                      {viewingSupplier.purchases.map((purchase: ViewingSupplierData['purchases'][0]) => (
                         <tr key={purchase.id} className="border-b border-slate-200">
                           <td className="px-4 py-2 text-sm">
                             {new Date(purchase.created_at).toLocaleDateString('id-ID')}

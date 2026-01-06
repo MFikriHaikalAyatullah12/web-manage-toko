@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatRupiah, parseRupiah, handleCurrencyInput } from '@/lib/currency-input';
+import { formatRupiah, handleCurrencyInput } from '@/lib/currency-input';
 
 interface CurrencyInputProps {
   value: number;
@@ -19,8 +19,7 @@ export default function CurrencyInput({
   placeholder = '0',
   className = '',
   disabled = false,
-  required = false,
-  min = 0
+  required = false
 }: CurrencyInputProps) {
   const [displayValue, setDisplayValue] = useState('');
 

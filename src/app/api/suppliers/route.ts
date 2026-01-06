@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/postgresql';
-import type { Supplier } from '@/types';
 
 export async function GET() {
   try {
