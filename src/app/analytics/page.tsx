@@ -184,7 +184,7 @@ export default function AnalyticsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [period, setPeriod] = useState<7 | 30>(7);
+  const [period, setPeriod] = useState<7 | 30>(30);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
 
@@ -263,8 +263,8 @@ export default function AnalyticsPage() {
             onChange={(e) => setPeriod(Number(e.target.value) as 7 | 30)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
           >
+            <option value={30}>1 Bulan Terakhir</option>
             <option value={7}>7 Hari Terakhir</option>
-            <option value={30}>30 Hari Terakhir</option>
           </select>
         </div>
       </div>

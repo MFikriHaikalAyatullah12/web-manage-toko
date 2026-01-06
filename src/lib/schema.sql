@@ -56,16 +56,7 @@ CREATE TABLE purchases (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert sample products
-INSERT INTO products (name, category, price, cost, stock, min_stock, supplier) VALUES
-('Indomie Goreng', 'Makanan', 3500, 2800, 50, 10, 'PT Indofood'),
-('Aqua 600ml', 'Minuman', 3000, 2200, 25, 15, 'PT Aqua'),
-('Beras Premium 5kg', 'Bahan Pokok', 75000, 65000, 8, 5, 'Toko Beras Jaya'),
-('Minyak Goreng 1L', 'Bahan Pokok', 18000, 15000, 3, 10, 'PT Minyak Sejahtera'),
-('Gula Pasir 1kg', 'Bahan Pokok', 15000, 12000, 20, 5, 'PT Gula Manis'),
-('Teh Botol Sosro', 'Minuman', 4000, 3000, 30, 10, 'PT Sosro'),
-('Kopi Kapal Api', 'Minuman', 2500, 2000, 40, 15, 'PT Kapal Api'),
-('Sabun Mandi Lifebuoy', 'Kebersihan', 8000, 6500, 15, 5, 'PT Unilever');
+-- No sample data - users will add their own products
 
 -- Create indexes for better performance
 CREATE INDEX idx_products_name ON products(name);

@@ -18,8 +18,15 @@ export async function GET() {
     
     console.log('Starting Excel export...');
 
-    // 1. Get Barang Masuk (Purchases)
-    console.log('Fetching purchases...');
+    // Get current month and year for filtering
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+    const currentYear = currentDate.getFullYear();
+    
+    console.log(`Exporting data for: ${currentMonth}/${currentYear}`);
+
+    // 1. Get Barang Masuk (Purchases) - Current Month Only
+    console.log('Fetching purchases for current month...');
     const purchases = await query(`
       SELECT 
         pu.created_at::date as tanggal,
@@ -28,15 +35,21 @@ export async function GET() {
         pu.quantity as jumlah,
         pu.cost as harga_satuan,
         pu.total as total_harga,
-        pu.supplier as supplier
+        pu.supplier as supplier,
+        prod.min_stock as stok_minimum,
+        prod.stock as stok_saat_ini,
+        prod.price as harga_jual,
+        prod.cost as harga_beli
       FROM purchases pu
       LEFT JOIN products prod ON pu.product_id = prod.id
+      WHERE EXTRACT(MONTH FROM pu.created_at) = $1
+        AND EXTRACT(YEAR FROM pu.created_at) = $2
       ORDER BY pu.created_at DESC
-    `);
+    `, [currentMonth, currentYear]);
     console.log('Purchases fetched:', purchases.rows.length, 'rows');
 
-    // 2. Get Penjualan (Transactions)
-    console.log('Fetching transactions...');
+    // 2. Get Penjualan (Transactions) - Current Month Only
+    console.log('Fetching transactions for current month...');
     const transactions = await query(`
       SELECT 
         t.created_at::date as tanggal,
@@ -49,12 +62,14 @@ export async function GET() {
       FROM transactions t
       JOIN transaction_items ti ON t.id = ti.transaction_id
       LEFT JOIN products prod ON ti.product_id = prod.id
+      WHERE EXTRACT(MONTH FROM t.created_at) = $1
+        AND EXTRACT(YEAR FROM t.created_at) = $2
       ORDER BY t.created_at DESC
-    `);
+    `, [currentMonth, currentYear]);
     console.log('Transactions fetched:', transactions.rows.length, 'rows');
 
-    // 3. Get Total Penjualan & Keuntungan
-    console.log('Fetching summary...');
+    // 3. Get Total Penjualan & Keuntungan - Current Month Only
+    console.log('Fetching summary for current month...');
     const summary = await query(`
       SELECT 
         DATE(t.created_at) as tanggal,
@@ -65,13 +80,15 @@ export async function GET() {
         SUM(ti.total - (ti.quantity * COALESCE(ti.cost, 0))) as keuntungan_bersih
       FROM transactions t
       JOIN transaction_items ti ON t.id = ti.transaction_id
+      WHERE EXTRACT(MONTH FROM t.created_at) = $1
+        AND EXTRACT(YEAR FROM t.created_at) = $2
       GROUP BY DATE(t.created_at)
       ORDER BY DATE(t.created_at) DESC
-    `);
+    `, [currentMonth, currentYear]);
     console.log('Summary fetched:', summary.rows.length, 'rows');
 
-    // 4. Get Penjualan Harian Detail
-    console.log('Fetching daily sales...');
+    // 4. Get Penjualan Harian Detail - Current Month Only
+    console.log('Fetching daily sales for current month...');
     const dailySales = await query(`
       SELECT 
         DATE(created_at) as tanggal,
@@ -79,10 +96,11 @@ export async function GET() {
         COUNT(*) as jumlah_transaksi,
         SUM(total) as total_penjualan
       FROM transactions
+      WHERE EXTRACT(MONTH FROM created_at) = $1
+        AND EXTRACT(YEAR FROM created_at) = $2
       GROUP BY DATE(created_at), TO_CHAR(created_at, 'Day')
       ORDER BY DATE(created_at) DESC
-      LIMIT 30
-    `);
+    `, [currentMonth, currentYear]);
     console.log('Daily sales fetched:', dailySales.rows.length, 'rows');
 
     // 5. Get Stok Menipis
@@ -119,15 +137,20 @@ export async function GET() {
       'Tanggal': row.tanggal ? new Date(row.tanggal).toLocaleDateString('id-ID') : '-',
       'Nama Produk': row.nama_produk || '-',
       'Kategori': row.kategori || '-',
-      'Jumlah': row.jumlah || 0,
+      'Jumlah Beli': row.jumlah || 0,
       'Harga Satuan': formatCurrency(row.harga_satuan),
       'Total Harga': formatCurrency(row.total_harga),
-      'Supplier': row.supplier || '-'
+      'Supplier': row.supplier || '-',
+      'Stok Minimum': row.stok_minimum || 0,
+      'Stok Saat Ini': row.stok_saat_ini || 0,
+      'Harga Jual': formatCurrency(row.harga_jual),
+      'Harga Beli': formatCurrency(row.harga_beli)
     }));
     const ws1 = XLSX.utils.json_to_sheet(purchasesData);
     ws1['!cols'] = [
-      { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, 
-      { wch: 15 }, { wch: 15 }, { wch: 20 }
+      { wch: 12 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, 
+      { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 14 },
+      { wch: 14 }, { wch: 15 }, { wch: 15 }
     ];
     XLSX.utils.book_append_sheet(workbook, ws1, 'Barang Masuk');
 
@@ -199,9 +222,11 @@ export async function GET() {
     // Generate buffer
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    // Create filename with timestamp
-    const timestamp = new Date().toISOString().split('T')[0];
-    const filename = `Laporan_Toko_${timestamp}.xlsx`;
+    // Create filename with month and year
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const monthName = monthNames[currentMonth - 1];
+    const filename = `Laporan_Bulanan_${monthName}_${currentYear}.xlsx`;
 
     // Return file
     return new NextResponse(buffer, {

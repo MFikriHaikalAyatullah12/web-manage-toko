@@ -68,18 +68,7 @@ export async function initializeDatabase() {
       );
     `);
 
-    // Insert sample data if tables are empty
-    const productCount = await client.query('SELECT COUNT(*) FROM products');
-    if (parseInt(productCount.rows[0].count) === 0) {
-      await client.query(`
-        INSERT INTO products (name, price, stock, category, description) VALUES
-        ('Nasi Putih', 5000, 100, 'Makanan', 'Nasi putih segar'),
-        ('Ayam Goreng', 15000, 50, 'Makanan', 'Ayam goreng crispy'),
-        ('Es Teh Manis', 3000, 200, 'Minuman', 'Es teh manis segar'),
-        ('Kentang Goreng', 8000, 80, 'Snack', 'Kentang goreng renyah'),
-        ('Juice Jeruk', 7000, 60, 'Minuman', 'Juice jeruk segar');
-      `);
-    }
+    // No sample data - users will add their own products
 
     console.log('✅ PostgreSQL database initialized successfully');
   } catch (error) {
