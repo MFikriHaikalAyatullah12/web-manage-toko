@@ -6,11 +6,22 @@ const API_BASE_URL = '/api';
 
 // Dashboard API
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  const response = await fetch(`${API_BASE_URL}/dashboard`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch dashboard stats');
+  try {
+    const response = await fetch(`${API_BASE_URL}/dashboard`, {
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      console.error('Dashboard API error:', response.status);
+      throw new Error(`Failed to fetch dashboard stats: ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    throw error;
   }
-  return response.json();
 };
 
 // Realtime API
@@ -20,27 +31,52 @@ export const fetchRealtimeData = async (): Promise<{
   timestamp: string;
   success: boolean;
 }> => {
-  const response = await fetch(`${API_BASE_URL}/realtime`, {
-    cache: 'no-store',
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
+  try {
+    const response = await fetch(`${API_BASE_URL}/realtime`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Realtime API error:', response.status);
+      throw new Error(`Failed to fetch realtime data: ${response.status}`);
     }
-  });
-  if (!response.ok) {
-    throw new Error('Failed to fetch realtime data');
+    
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching realtime data:', error);
+    throw error;
   }
-  return response.json();
 };
 
 // Products API
 export const fetchProducts = async (): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE_URL}/products`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch products');
+  try {
+    const response = await fetch(`${API_BASE_URL}/products`, {
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Products API error:', response.status, errorData);
+      throw new Error(`Failed to fetch products: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    // Return empty array instead of throwing to prevent dashboard from breaking
+    return [];
   }
-  return response.json();
 };
 
 export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> => {
@@ -132,9 +168,22 @@ export const createPurchase = async (purchase: {
 
 // Chart data API
 export const fetchChartData = async (period: number = 7): Promise<ChartData[]> => {
-  const response = await fetch(`${API_BASE_URL}/chart?period=${period}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch chart data');
+  try {
+    const response = await fetch(`${API_BASE_URL}/chart?period=${period}`, {
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      console.error('Chart API error:', response.status);
+      throw new Error(`Failed to fetch chart data: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching chart data:', error);
+    // Return empty array to prevent dashboard from breaking
+    return [];
   }
-  return response.json();
 };

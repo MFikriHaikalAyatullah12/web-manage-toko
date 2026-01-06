@@ -1,3 +1,15 @@
+export interface Supplier {
+  id: number;
+  name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -6,6 +18,9 @@ export interface Product {
   cost?: number;
   stock: number;
   min_stock?: number;
+  unit?: string; // 'pcs' or 'box'
+  box_quantity?: number; // jumlah pcs per box
+  supplier_id?: number;
   supplier?: string;
   created_at?: Date;
   updated_at?: Date;
@@ -42,8 +57,10 @@ export interface Purchase {
   productId?: number;
   productName: string;
   quantity: number;
+  unit?: string; // 'pcs' or 'box'
   price: number; // This maps to cost in DB
   total: number;
+  supplier_id?: number;
   supplier?: string;
   date: Date; // This maps to created_at
   created_at?: Date;

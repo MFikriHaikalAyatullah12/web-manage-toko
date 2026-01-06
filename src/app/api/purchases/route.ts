@@ -21,9 +21,11 @@ export async function GET() {
         product_id as "productId",
         product_name as "productName",
         quantity,
+        unit,
         cost as price,
         total,
         supplier,
+        supplier_id as "supplierId",
         created_at as date,
         created_at
       FROM purchases 
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     await client.query('BEGIN');
     
     const body = await request.json();
-    const { productId, productName, quantity, price, total, supplier } = body;
+    const { productId, productName, quantity, unit, price, total, supplier, supplierId } = body;
 
     if (!productName || !quantity || !price || !total) {
       throw new Error('Missing required fields');
@@ -56,10 +58,10 @@ export async function POST(request: NextRequest) {
 
     // Insert purchase
     const purchaseResult = await client.query(`
-      INSERT INTO purchases (product_id, product_name, quantity, cost, total, supplier, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-      RETURNING id, product_id as "productId", product_name as "productName", quantity, cost as price, total, supplier, created_at as date, created_at
-    `, [productId || null, productName, quantity, price, total, supplier || null]);
+      INSERT INTO purchases (product_id, product_name, quantity, unit, cost, total, supplier, supplier_id, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+      RETURNING id, product_id as "productId", product_name as "productName", quantity, unit, cost as price, total, supplier, supplier_id as "supplierId", created_at as date, created_at
+    `, [productId || null, productName, quantity, unit || 'pcs', price, total, supplier || null, supplierId || null]);
 
     // Update product stock if product exists
     if (productId) {

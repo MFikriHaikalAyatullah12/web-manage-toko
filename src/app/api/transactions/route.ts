@@ -35,6 +35,7 @@ export async function GET() {
               'productName', ti.product_name,
               'quantity', ti.quantity,
               'price', ti.price,
+              'cost', ti.cost,
               'total', (ti.quantity * ti.price)
             ) ORDER BY ti.id
           ) FILTER (WHERE ti.id IS NOT NULL), 
@@ -49,8 +50,12 @@ export async function GET() {
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Error getting transactions:', error);
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
-      { error: 'Failed to get transactions' },
+      { 
+        error: 'Failed to get transactions',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

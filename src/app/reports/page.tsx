@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fetchTransactions, fetchPurchases } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Transaction, Purchase } from '@/types';
+import { ReceiptPrint } from '@/components/ReceiptPrint';
 
 export default function ReportsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -158,10 +159,13 @@ export default function ReportsPage() {
                 {transactions.map((transaction) => (
                   <div key={transaction.id} className="bg-amber-50 rounded-xl p-4 border border-amber-200">
                     <div className="flex justify-between items-start mb-2">
-                      <div className="text-xs text-amber-600">{formatDate(transaction.date)}</div>
-                      <div className="text-sm font-bold text-amber-800">{formatCurrency(transaction.total)}</div>
+                      <div>
+                        <div className="text-xs text-amber-600">{formatDate(transaction.date)}</div>
+                        <div className="text-sm font-bold text-amber-800">{formatCurrency(transaction.total)}</div>
+                        <div className="text-xs text-amber-700 capitalize mt-1">{transaction.paymentMethod}</div>
+                      </div>
+                      <ReceiptPrint transaction={transaction} />
                     </div>
-                    <div className="text-xs text-amber-700 capitalize">{transaction.paymentMethod}</div>
                   </div>
                 ))}
               </div>
@@ -177,8 +181,8 @@ export default function ReportsPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
                         Total
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-amber-800 uppercase tracking-wider">
-                        Pembayaran
+                      <th className="px-4 py-3 text-right text-xs font-medium text-amber-800 uppercase tracking-wider">
+                        Aksi
                       </th>
                     </tr>
                   </thead>
@@ -193,6 +197,9 @@ export default function ReportsPage() {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-amber-700">
                           <span className="capitalize">{transaction.paymentMethod}</span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right">
+                          <ReceiptPrint transaction={transaction} />
                         </td>
                       </tr>
                     ))}

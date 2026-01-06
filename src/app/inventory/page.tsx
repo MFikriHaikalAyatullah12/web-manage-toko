@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fetchProducts, createProduct, createPurchase, deleteProduct } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Product } from '@/types';
+import CurrencyInput from '@/components/CurrencyInput';
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -20,12 +21,15 @@ export default function InventoryPage() {
     price: 0,
     cost: 0,
     stock: 0,
-    minStock: 10
+    minStock: 10,
+    unit: 'pcs',
+    boxQuantity: 1
   });
 
   const [newPurchase, setNewPurchase] = useState({
     productId: '',
     quantity: 0,
+    unit: 'pcs',
     costPrice: 0,
     supplier: ''
   });
@@ -35,12 +39,14 @@ export default function InventoryPage() {
     isOpen: boolean;
     product: Product | null;
     quantity: number;
+    unit: string;
     costPrice: number;
     supplier: string;
   }>({
     isOpen: false,
     product: null,
     quantity: 0,
+    unit: 'pcs',
     costPrice: 0,
     supplier: ''
   });
@@ -82,7 +88,9 @@ export default function InventoryPage() {
         price: 0,
         cost: 0,
         stock: 0,
-        minStock: 10
+        minStock: 10,
+        unit: 'pcs',
+        boxQuantity: 1
       });
       setActiveTab('products');
       setLastUpdated(new Date());
@@ -98,12 +106,19 @@ export default function InventoryPage() {
     setIsLoading(true);
     try {
       const selectedProduct = products.find(p => p.id === parseInt(newPurchase.productId));
+      // Konversi ke pcs jika unit adalah box
+      let actualQuantity = newPurchase.quantity;
+      if (newPurchase.unit === 'box' && selectedProduct?.box_quantity) {
+        actualQuantity = newPurchase.quantity * selectedProduct.box_quantity;
+      }
+      
       const purchaseData = {
         productId: newPurchase.productId,
         productName: selectedProduct?.name || '',
-        quantity: newPurchase.quantity,
+        quantity: actualQuantity,
+        unit: newPurchase.unit,
         price: newPurchase.costPrice, // Changed from cost to price
-        total: newPurchase.quantity * newPurchase.costPrice,
+        total: actualQuantity * newPurchase.costPrice,
         supplier: newPurchase.supplier
       };
       await createPurchase(purchaseData);
@@ -121,6 +136,7 @@ export default function InventoryPage() {
       setNewPurchase({
         productId: '',
         quantity: 0,
+        unit: 'pcs',
         costPrice: 0,
         supplier: ''
       });
@@ -169,6 +185,7 @@ export default function InventoryPage() {
       isOpen: true,
       product,
       quantity: 0,
+      unit: 'pcs',
       costPrice: product.cost || 0,
       supplier: product.supplier || ''
     });
@@ -179,6 +196,7 @@ export default function InventoryPage() {
       isOpen: false,
       product: null,
       quantity: 0,
+      unit: 'pcs',
       costPrice: 0,
       supplier: ''
     });
@@ -189,12 +207,19 @@ export default function InventoryPage() {
     
     setIsLoading(true);
     try {
+      // Konversi ke pcs jika unit adalah box
+      let actualQuantity = updateStockModal.quantity;
+      if (updateStockModal.unit === 'box' && updateStockModal.product.box_quantity) {
+        actualQuantity = updateStockModal.quantity * updateStockModal.product.box_quantity;
+      }
+      
       const purchaseData = {
         productId: updateStockModal.product.id.toString(),
         productName: updateStockModal.product.name,
-        quantity: updateStockModal.quantity,
+        quantity: actualQuantity,
+        unit: updateStockModal.unit,
         price: updateStockModal.costPrice, // Changed from 'cost' to 'price' to match API
-        total: updateStockModal.quantity * updateStockModal.costPrice,
+        total: actualQuantity * updateStockModal.costPrice,
         supplier: updateStockModal.supplier
       };
       
@@ -527,12 +552,10 @@ export default function InventoryPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Harga Beli (Rp) *
                 </label>
-                <input
-                  type="number"
+                <CurrencyInput
                   required
-                  min="0"
                   value={newProduct.cost}
-                  onChange={(e) => setNewProduct({...newProduct, cost: Number(e.target.value)})}
+                  onChange={(value) => setNewProduct({...newProduct, cost: value})}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                   placeholder="0"
                 />
@@ -542,12 +565,10 @@ export default function InventoryPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Harga Jual (Rp) *
                 </label>
-                <input
-                  type="number"
+                <CurrencyInput
                   required
-                  min="0"
                   value={newProduct.price}
-                  onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                  onChange={(value) => setNewProduct({...newProduct, price: value})}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                   placeholder="0"
                 />
@@ -566,6 +587,40 @@ export default function InventoryPage() {
                   placeholder="5"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Satuan Unit
+                </label>
+                <select
+                  value={newProduct.unit}
+                  onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                >
+                  <option value="pcs">Pcs (Satuan)</option>
+                  <option value="box">Box/Dus</option>
+                </select>
+              </div>
+              
+              {newProduct.unit === 'box' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Jumlah Pcs per Box *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={newProduct.boxQuantity}
+                    onChange={(e) => setNewProduct({...newProduct, boxQuantity: Number(e.target.value)})}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                    placeholder="Contoh: 12"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    1 box = {newProduct.boxQuantity} pcs
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-end">
                 <div className="w-full p-4 bg-slate-50 rounded-xl">
@@ -657,14 +712,35 @@ export default function InventoryPage() {
               
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Satuan
+                </label>
+                <select
+                  value={newPurchase.unit}
+                  onChange={(e) => setNewPurchase({...newPurchase, unit: e.target.value})}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                >
+                  <option value="pcs">Pcs (Satuan)</option>
+                  <option value="box">Box/Dus</option>
+                </select>
+                {newPurchase.unit === 'box' && newPurchase.productId && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {(() => {
+                      const selectedProduct = products.find(p => p.id === parseInt(newPurchase.productId));
+                      const boxQty = selectedProduct?.box_quantity || 1;
+                      return `1 box = ${boxQty} pcs (Total: ${newPurchase.quantity * boxQty} pcs)`;
+                    })()}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Harga Beli per Unit (Rp) *
                 </label>
-                <input
-                  type="number"
+                <CurrencyInput
                   required
-                  min="0"
                   value={newPurchase.costPrice}
-                  onChange={(e) => setNewPurchase({...newPurchase, costPrice: Number(e.target.value)})}
+                  onChange={(value) => setNewPurchase({...newPurchase, costPrice: value})}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                   placeholder="0"
                 />
@@ -687,7 +763,14 @@ export default function InventoryPage() {
                 <div className="w-full p-4 bg-slate-50 rounded-xl">
                   <div className="text-sm font-medium text-slate-700 mb-1">Total Pembelian</div>
                   <div className="text-xl font-bold text-blue-600">
-                    {formatCurrency(newPurchase.quantity * newPurchase.costPrice)}
+                    {(() => {
+                      const selectedProduct = products.find(p => p.id === parseInt(newPurchase.productId));
+                      let actualQuantity = newPurchase.quantity;
+                      if (newPurchase.unit === 'box' && selectedProduct?.box_quantity) {
+                        actualQuantity = newPurchase.quantity * selectedProduct.box_quantity;
+                      }
+                      return formatCurrency(actualQuantity * newPurchase.costPrice);
+                    })()}
                   </div>
                 </div>
               </div>
@@ -767,18 +850,39 @@ export default function InventoryPage() {
                   placeholder="Masukkan jumlah yang ingin ditambah"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Satuan
+                </label>
+                <select
+                  value={updateStockModal.unit}
+                  onChange={(e) => setUpdateStockModal(prev => ({
+                    ...prev,
+                    unit: e.target.value
+                  }))}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                >
+                  <option value="pcs">Pcs (Satuan)</option>
+                  <option value="box">Box/Dus</option>
+                </select>
+                {updateStockModal.unit === 'box' && updateStockModal.product?.box_quantity && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    1 box = {updateStockModal.product.box_quantity} pcs 
+                    (Total: {updateStockModal.quantity * updateStockModal.product.box_quantity} pcs)
+                  </p>
+                )}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Harga Beli per Unit (Rp) *
                 </label>
-                <input
-                  type="number"
-                  min="0"
+                <CurrencyInput
                   value={updateStockModal.costPrice}
-                  onChange={(e) => setUpdateStockModal(prev => ({
+                  onChange={(value) => setUpdateStockModal(prev => ({
                     ...prev,
-                    costPrice: Number(e.target.value)
+                    costPrice: value
                   }))}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
                   placeholder="Harga beli per unit"
@@ -806,13 +910,25 @@ export default function InventoryPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-blue-700">Stok Baru:</span>
                     <span className="font-bold text-blue-800">
-                      {(updateStockModal.product?.stock || 0) + updateStockModal.quantity} unit
+                      {(() => {
+                        let actualQuantity = updateStockModal.quantity;
+                        if (updateStockModal.unit === 'box' && updateStockModal.product?.box_quantity) {
+                          actualQuantity = updateStockModal.quantity * updateStockModal.product.box_quantity;
+                        }
+                        return (updateStockModal.product?.stock || 0) + actualQuantity;
+                      })()} pcs
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-blue-700">Total Biaya:</span>
                     <span className="font-bold text-blue-800">
-                      {formatCurrency(updateStockModal.quantity * updateStockModal.costPrice)}
+                      {(() => {
+                        let actualQuantity = updateStockModal.quantity;
+                        if (updateStockModal.unit === 'box' && updateStockModal.product?.box_quantity) {
+                          actualQuantity = updateStockModal.quantity * updateStockModal.product.box_quantity;
+                        }
+                        return formatCurrency(actualQuantity * updateStockModal.costPrice);
+                      })()}
                     </span>
                   </div>
                 </div>

@@ -16,7 +16,7 @@ export async function GET() {
     await ensureInitialized();
     
     const result = await query(`
-      SELECT id, name, price, stock, category, cost, min_stock, supplier, created_at, updated_at
+      SELECT id, name, price, stock, category, cost, min_stock, supplier, unit, box_quantity, supplier_id, created_at, updated_at
       FROM products 
       ORDER BY name ASC
     `);
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     await ensureInitialized();
     
     const body = await request.json();
-    const { name, price, stock, category, cost, minStock, supplier } = body;
+    const { name, price, stock, category, cost, minStock, supplier, unit, boxQuantity, supplierId } = body;
 
     if (!name || price === undefined || stock === undefined) {
       return NextResponse.json(
@@ -46,10 +46,21 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query(`
-      INSERT INTO products (name, category, price, cost, stock, min_stock, supplier, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
-      RETURNING id, name, category, price, cost, stock, min_stock, supplier, created_at, updated_at
-    `, [name, category || 'General', price, cost || 0, stock, minStock || 5, supplier || null]);
+      INSERT INTO products (name, category, price, cost, stock, min_stock, supplier, unit, box_quantity, supplier_id, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+      RETURNING id, name, category, price, cost, stock, min_stock, supplier, unit, box_quantity, supplier_id, created_at, updated_at
+    `, [
+      name, 
+      category || 'General', 
+      price, 
+      cost || 0, 
+      stock, 
+      minStock || 5, 
+      supplier || null, 
+      unit || 'pcs', 
+      boxQuantity || 1, 
+      supplierId || null
+    ]);
 
     return NextResponse.json(result.rows[0]);
   } catch (error) {

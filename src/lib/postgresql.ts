@@ -1,9 +1,11 @@
 import { Pool } from 'pg';
 
-// Create PostgreSQL connection pool
+// Create PostgreSQL connection pool for Neon.tech
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Initialize database tables
@@ -11,12 +13,36 @@ export async function initializeDatabase() {
   const client = await pool.connect();
   
   try {
-    // Drop existing tables if they exist (to ensure clean setup)
+    // Check if tables already exist
+    const checkResult = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'suppliers'
+      );
+    `);
+    
+    // If tables already exist, skip initialization
+    if (checkResult.rows[0].exists) {
+      console.log('✅ Database tables already exist, skipping initialization');
+      return;
+    }
+
+    console.log('🔄 Initializing database tables...');
+
+    // Create suppliers table
     await client.query(`
-      DROP TABLE IF EXISTS transaction_items CASCADE;
-      DROP TABLE IF EXISTS transactions CASCADE;
-      DROP TABLE IF EXISTS purchases CASCADE;
-      DROP TABLE IF EXISTS products CASCADE;
+      CREATE TABLE suppliers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        contact_person VARCHAR(255),
+        phone VARCHAR(50),
+        email VARCHAR(255),
+        address TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Create products table
@@ -29,6 +55,9 @@ export async function initializeDatabase() {
         cost DECIMAL(10,2) DEFAULT 0,
         stock INTEGER DEFAULT 0,
         min_stock INTEGER DEFAULT 0,
+        unit VARCHAR(20) DEFAULT 'pcs',
+        box_quantity INTEGER DEFAULT 1,
+        supplier_id INTEGER REFERENCES suppliers(id),
         supplier VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -72,8 +101,10 @@ export async function initializeDatabase() {
         product_id INTEGER REFERENCES products(id),
         product_name VARCHAR(255) NOT NULL,
         quantity INTEGER NOT NULL,
+        unit VARCHAR(20) DEFAULT 'pcs',
         cost DECIMAL(10,2) NOT NULL,
         total DECIMAL(10,2) NOT NULL,
+        supplier_id INTEGER REFERENCES suppliers(id),
         supplier VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -81,13 +112,16 @@ export async function initializeDatabase() {
 
     // Create indexes for better performance
     await client.query(`
+      CREATE INDEX idx_suppliers_name ON suppliers(name);
       CREATE INDEX idx_products_name ON products(name);
       CREATE INDEX idx_products_category ON products(category);
+      CREATE INDEX idx_products_supplier_id ON products(supplier_id);
       CREATE INDEX idx_transactions_created_at ON transactions(created_at);
       CREATE INDEX idx_transaction_items_transaction_id ON transaction_items(transaction_id);
       CREATE INDEX idx_transaction_items_product_id ON transaction_items(product_id);
       CREATE INDEX idx_purchases_created_at ON purchases(created_at);
       CREATE INDEX idx_purchases_product_id ON purchases(product_id);
+      CREATE INDEX idx_purchases_supplier_id ON purchases(supplier_id);
     `);
 
     // Create function to update updated_at timestamp
@@ -101,10 +135,17 @@ export async function initializeDatabase() {
       $$ language 'plpgsql';
     `);
 
-    // Create trigger for products table
+    // Create triggers for updated_at
     await client.query(`
       CREATE TRIGGER update_products_updated_at 
         BEFORE UPDATE ON products 
+        FOR EACH ROW 
+        EXECUTE FUNCTION update_updated_at_column();
+    `);
+
+    await client.query(`
+      CREATE TRIGGER update_suppliers_updated_at 
+        BEFORE UPDATE ON suppliers 
         FOR EACH ROW 
         EXECUTE FUNCTION update_updated_at_column();
     `);
@@ -121,7 +162,7 @@ export async function initializeDatabase() {
 }
 
 // Database query functions
-export async function query(text: string, params?: unknown[]) {
+export async function query(text: string, params?: any[]) {
   const client = await pool.connect();
   try {
     const result = await client.query(text, params);
