@@ -6,216 +6,7 @@ import { fetchDashboardStats, fetchChartData, fetchProducts } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { DashboardStats, ChartData, Product } from '@/types';
 
-// Professional chart component
-const ProfessionalChart = ({ data }: { data: ChartData[] }) => {
-  const safeData = Array.isArray(data) ? data : [];
-  
-  if (safeData.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl p-6 card-shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-slate-800">Penjualan 7 Hari Terakhir</h3>
-          <div className="px-3 py-1 bg-slate-100 rounded-full">
-            <span className="text-xs font-medium text-slate-600">Kosong</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64 bg-slate-50 rounded-xl">
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <p className="text-slate-600 font-medium">Tidak ada data penjualan</p>
-            <p className="text-sm text-slate-500 mt-1">Grafik akan muncul setelah ada transaksi</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  // Calculate min and max for scaling
-  const salesValues = safeData.map(d => d.sales || 0);
-  const maxSales = Math.max(...salesValues, 1);
-  const minSales = Math.min(...salesValues);
-  const range = maxSales - minSales || 1;
-
-  // Calculate positions for line chart
-  const chartHeight = 200;
-  const chartWidth = 100; // percentage
-  const pointSpacing = chartWidth / Math.max(safeData.length - 1, 1);
-
-  const getYPosition = (value: number) => {
-    const percentage = ((value - minSales) / range);
-    return chartHeight - (percentage * chartHeight);
-  };
-
-  // Build SVG path for the line
-  const points: Array<{ x: number; y: number; value: number; increasing: boolean }> = [];
-  
-  safeData.forEach((item, index) => {
-    const value = item.sales || 0;
-    const x = index * pointSpacing;
-    const y = getYPosition(value);
-    const prevValue = index > 0 ? (safeData[index - 1].sales || 0) : value;
-    const increasing = value >= prevValue;
-    
-    points.push({ x, y, value, increasing });
-  });
-
-  return (
-    <div className="bg-white rounded-2xl p-6 card-shadow-lg">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-800">Penjualan 7 Hari Terakhir</h3>
-          <p className="text-sm text-slate-600 mt-1">Trend penjualan harian</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center px-3 py-1.5 bg-green-100 rounded-full">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
-            <span className="text-xs font-semibold text-green-700">Real-time</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Line Chart Container */}
-      <div className="relative" style={{ height: `${chartHeight + 60}px` }}>
-        {/* Grid lines */}
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="border-t border-slate-100"></div>
-          ))}
-        </div>
-
-        {/* SVG Line Chart */}
-        <svg 
-          className="absolute inset-0" 
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          preserveAspectRatio="none"
-          style={{ height: `${chartHeight}px` }}
-        >
-          {/* Draw line segments with different colors */}
-          {points.map((point, index) => {
-            if (index === 0) return null;
-            const prevPoint = points[index - 1];
-            const isIncreasing = point.value >= prevPoint.value;
-            const color = isIncreasing ? '#10b981' : '#ef4444'; // green for increase, red for decrease
-            
-            return (
-              <line
-                key={index}
-                x1={`${prevPoint.x}%`}
-                y1={prevPoint.y}
-                x2={`${point.x}%`}
-                y2={point.y}
-                stroke={color}
-                strokeWidth="3"
-                strokeLinecap="round"
-                className="transition-all duration-300"
-              />
-            );
-          })}
-
-          {/* Draw points */}
-          {points.map((point, index) => {
-            const prevValue = index > 0 ? points[index - 1].value : point.value;
-            const isIncreasing = point.value >= prevValue;
-            const color = isIncreasing ? '#10b981' : '#ef4444';
-            
-            return (
-              <g key={index}>
-                {/* Outer circle */}
-                <circle
-                  cx={`${point.x}%`}
-                  cy={point.y}
-                  r="6"
-                  fill="white"
-                  stroke={color}
-                  strokeWidth="3"
-                  className="transition-all duration-300 hover:r-8"
-                />
-                {/* Inner circle */}
-                <circle
-                  cx={`${point.x}%`}
-                  cy={point.y}
-                  r="3"
-                  fill={color}
-                  className="transition-all duration-300"
-                />
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Data points with tooltips */}
-        <div className="absolute inset-0 flex justify-between items-end" style={{ height: `${chartHeight}px` }}>
-          {safeData.map((item, index) => {
-            const point = points[index];
-            const prevValue = index > 0 ? (safeData[index - 1].sales || 0) : item.sales || 0;
-            const currentValue = item.sales || 0;
-            const isIncreasing = currentValue >= prevValue;
-            const percentChange = prevValue > 0 ? ((currentValue - prevValue) / prevValue * 100) : 0;
-            
-            return (
-              <div 
-                key={index} 
-                className="flex-1 relative group flex flex-col items-center"
-                style={{ height: `${chartHeight}px` }}
-              >
-                {/* Hover area */}
-                <div className="absolute inset-0 cursor-pointer"></div>
-                
-                {/* Tooltip */}
-                <div 
-                  className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap z-20 pointer-events-none"
-                  style={{ 
-                    top: `${point.y - 60}px`,
-                    left: '50%',
-                    transform: 'translateX(-50%)'
-                  }}
-                >
-                  <div className="font-semibold">{formatCurrency(currentValue)}</div>
-                  {index > 0 && (
-                    <div className={`text-xs ${isIncreasing ? 'text-green-400' : 'text-red-400'}`}>
-                      {isIncreasing ? '↑' : '↓'} {Math.abs(percentChange).toFixed(1)}%
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Labels at bottom */}
-        <div className="absolute flex justify-between w-full" style={{ top: `${chartHeight + 10}px` }}>
-          {safeData.map((item, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center">
-              <div className="text-xs font-medium text-slate-600">
-                {item.day || item.date || '-'}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                {item.sales && item.sales > 0 ? formatCurrency(item.sales, true) : '-'}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          <span className="text-xs font-medium text-slate-600">Peningkatan</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <span className="text-xs font-medium text-slate-600">Penurunan</span>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Professional stats card component
 const ProfessionalStatsCard = ({ 
@@ -314,7 +105,6 @@ const ExclamationTriangleIcon = ({ className }: { className?: string }) => (
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
@@ -325,9 +115,8 @@ export default function Dashboard() {
         setIsLoading(true);
         console.log('Loading dashboard data...');
         
-        const [dashboardStats, salesData, products] = await Promise.all([
+        const [dashboardStats, products] = await Promise.all([
           fetchDashboardStats(),
-          fetchChartData(),
           fetchProducts()
         ]);
         
@@ -352,7 +141,6 @@ export default function Dashboard() {
         };
 
         setStats(safeStats);
-        setChartData(salesData);
         setLowStockProducts(lowStock);
         setLastUpdated(new Date());
         console.log('Dashboard data loaded successfully');
@@ -439,63 +227,55 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Charts and Alerts Grid - Mobile Optimized */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
-        {/* Sales Chart - Takes 2 columns */}
-        <div className="xl:col-span-2">
-          <ProfessionalChart data={chartData} />
-        </div>
-
-        {/* Low Stock Alert */}
-        <div className="bg-white rounded-2xl p-6 card-shadow-lg">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">Peringatan Stok</h3>
-              <p className="text-sm text-slate-600 mt-1">Item yang perlu direstock</p>
-            </div>
-            <div className="flex items-center px-3 py-1.5 bg-orange-100 rounded-full">
-              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-2"></div>
-              <span className="text-xs font-semibold text-orange-700">Alert</span>
-            </div>
+      {/* Low Stock Alert - Full Width */}
+      <div className="bg-white rounded-2xl p-6 card-shadow-lg">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800">Peringatan Stok</h3>
+            <p className="text-sm text-slate-600 mt-1">Item yang perlu direstock</p>
           </div>
-          
-          {lowStockProducts.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-slate-700 font-medium">Stok Aman</p>
-              <p className="text-sm text-slate-500 mt-1">Semua produk memiliki stok yang mencukupi</p>
+          <div className="flex items-center px-3 py-1.5 bg-orange-100 rounded-full">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-2"></div>
+            <span className="text-xs font-semibold text-orange-700">Alert</span>
+          </div>
+        </div>
+        
+        {lowStockProducts.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-          ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              {lowStockProducts.slice(0, 6).map((product: Product) => (
-                <div key={product.id} className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-100 hover:bg-orange-100 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-800 truncate">{product.name}</p>
-                    <p className="text-sm text-slate-600 mt-1">
-                      <span className="font-medium text-orange-600">{product.stock || 0}</span> / {product.min_stock || 5} minimum
-                    </p>
-                  </div>
-                  <div className="flex items-center ml-4">
-                    <span className="px-3 py-1 bg-orange-200 text-orange-800 text-xs font-semibold rounded-full">
-                      Restock
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {lowStockProducts.length > 6 && (
-                <div className="text-center pt-4">
-                  <p className="text-sm text-slate-600">
-                    +{lowStockProducts.length - 6} produk lainnya perlu restock
+            <p className="text-slate-700 font-medium">Stok Aman</p>
+            <p className="text-sm text-slate-500 mt-1">Semua produk memiliki stok yang mencukupi</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {lowStockProducts.slice(0, 6).map((product: Product) => (
+              <div key={product.id} className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-100 hover:bg-orange-100 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 truncate">{product.name}</p>
+                  <p className="text-sm text-slate-600 mt-1">
+                    <span className="font-medium text-orange-600">{product.stock || 0}</span> / {product.min_stock || 5} minimum
                   </p>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                <div className="flex items-center ml-4">
+                  <span className="px-3 py-1 bg-orange-200 text-orange-800 text-xs font-semibold rounded-full">
+                    Restock
+                  </span>
+                </div>
+              </div>
+            ))}
+            {lowStockProducts.length > 6 && (
+              <div className="text-center pt-4">
+                <p className="text-sm text-slate-600">
+                  +{lowStockProducts.length - 6} produk lainnya perlu restock
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Professional Quick Actions */}

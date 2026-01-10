@@ -9,25 +9,25 @@ import { ChartData, Product, Transaction, DashboardStats } from '@/types';
 const BarChart = ({ data, title }: { data: ChartData[]; title: string }) => (
   <div className="bg-white p-6 rounded-lg shadow">
     <h3 className="text-lg font-semibold mb-4 text-black">{title}</h3>
-    <div className="h-64">
-      <div className="flex items-end justify-between h-48 space-x-2">
+    <div className="h-64 overflow-x-auto">
+      <div className="flex items-end justify-start h-48 gap-2" style={{ minWidth: `${Math.max(data.length * 50, 100)}px` }}>
         {data && data.length > 0 ? data.map((item, index) => {
-          const maxValue = Math.max(...data.map(d => d.sales).filter(s => !isNaN(s) && s > 0));
+          const maxValue = Math.max(...data.map(d => d.sales).filter(s => !isNaN(s) && s > 0), 1);
           const itemSales = isNaN(item.sales) ? 0 : item.sales;
           const height = maxValue > 0 && itemSales > 0 ? (itemSales / maxValue) * 100 : 0;
           const safeHeight = isNaN(height) ? 0 : Math.max(0, Math.min(100, height));
           
           return (
-            <div key={index} className="flex flex-col items-center flex-1">
-              <div className="text-xs text-black mb-1">
-                {formatCurrency(itemSales)}
+            <div key={index} className="flex flex-col items-center" style={{ minWidth: '45px', flex: '0 0 auto' }}>
+              <div className="text-xs text-black mb-1 whitespace-nowrap">
+                {itemSales > 0 ? formatCurrency(itemSales, true) : 'Rp 0'}
               </div>
               <div 
                 className="w-full bg-blue-500 rounded-t transition-all duration-300 hover:bg-blue-600"
                 style={{ height: `${safeHeight}%`, minHeight: safeHeight > 0 ? '8px' : '2px' }}
                 title={`${item.date}: ${formatCurrency(itemSales)}`}
               />
-              <div className="text-xs text-black mt-1">{item.date}</div>
+              <div className="text-xs text-black mt-1 whitespace-nowrap">{item.date}</div>
             </div>
           );
         }) : (
@@ -44,10 +44,10 @@ const BarChart = ({ data, title }: { data: ChartData[]; title: string }) => (
 const ProfitChart = ({ data, title }: { data: ChartData[]; title: string }) => (
   <div className="bg-white p-6 rounded-lg shadow">
     <h3 className="text-lg font-semibold mb-4 text-black">{title}</h3>
-    <div className="h-64">
-      <div className="flex items-end justify-between h-48 space-x-2">
+    <div className="h-64 overflow-x-auto">
+      <div className="flex items-end justify-start h-48 gap-2" style={{ minWidth: `${Math.max(data.length * 50, 100)}px` }}>
         {data && data.length > 0 ? data.map((item, index) => {
-          const maxValue = Math.max(...data.map(d => Math.abs(d.profit)).filter(p => !isNaN(p) && p > 0));
+          const maxValue = Math.max(...data.map(d => Math.abs(d.profit)).filter(p => !isNaN(p) && p > 0), 1);
           const itemProfit = isNaN(item.profit) ? 0 : item.profit;
           const absProfit = Math.abs(itemProfit);
           const height = maxValue > 0 && absProfit > 0 ? (absProfit / maxValue) * 100 : 0;
@@ -55,9 +55,9 @@ const ProfitChart = ({ data, title }: { data: ChartData[]; title: string }) => (
           const isProfit = itemProfit >= 0;
           
           return (
-            <div key={index} className="flex flex-col items-center flex-1">
-              <div className="text-xs text-black mb-1">
-                {formatCurrency(itemProfit)}
+            <div key={index} className="flex flex-col items-center" style={{ minWidth: '45px', flex: '0 0 auto' }}>
+              <div className="text-xs text-black mb-1 whitespace-nowrap">
+                {formatCurrency(itemProfit, true)}
               </div>
               <div 
                 className={`w-full rounded-t transition-all duration-300 ${
@@ -66,7 +66,7 @@ const ProfitChart = ({ data, title }: { data: ChartData[]; title: string }) => (
                 style={{ height: `${safeHeight}%`, minHeight: safeHeight > 0 ? '8px' : '2px' }}
                 title={`${item.date}: ${formatCurrency(itemProfit)}`}
               />
-              <div className="text-xs text-black mt-1">{item.date}</div>
+              <div className="text-xs text-black mt-1 whitespace-nowrap">{item.date}</div>
             </div>
           );
         }) : (
