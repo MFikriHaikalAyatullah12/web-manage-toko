@@ -2,215 +2,194 @@
 
 import { formatCurrency } from '@/lib/utils';
 import { Transaction } from '@/types';
+import { jsPDF } from 'jspdf';
 
 interface ReceiptProps {
   transaction: Transaction;
 }
 
 export function ReceiptPrint({ transaction }: ReceiptProps) {
-  const handlePrint = () => {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) return;
+  const handleDownload = () => {
+    const date = new Date(transaction.date);
+    const formattedDate = date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    const formattedTime = date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
-    const content = generateReceiptHTML(transaction);
-    printWindow.document.write(content);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+    let yPos = 5;
+    const leftMargin = 3;
+    const pageWidth = 58;
+    
+    // First pass: Calculate required height
+    let calculatedHeight = yPos;
+    
+    // Header space
+    calculatedHeight += 4 + 4 + 3; // title + subtitle + line
+    
+    // Transaction info
+    calculatedHeight += 3 * 5 + 3; // 5 lines of info + line
+    
+    // Items
+    (transaction.items || []).forEach(() => {
+      calculatedHeight += 3 + 4; // product name + detail line
+    });
+    calculatedHeight += 3; // dashed line
+    
+    // Totals
+    calculatedHeight += 3; // subtotal
+    if (transaction.tax) calculatedHeight += 3;
+    if (transaction.discount) calculatedHeight += 3;
+    calculatedHeight += 1 + 2 + 5; // grand total spacing
+    
+    // Footer
+    calculatedHeight += 3 + 3 + 3 + 2.5 + 5; // lines + padding
+    
+    // Create PDF document with calculated height
+    const doc = new jsPDF({
+      unit: 'mm',
+      format: [58, calculatedHeight]
+    });
+    
+    // Reset yPos for actual rendering
+    yPos = 5;
+    
+    // Helper function to add centered text
+    const addCenteredText = (text: string, y: number, fontSize: number = 8) => {
+      doc.setFontSize(fontSize);
+      const textWidth = doc.getTextWidth(text);
+      const x = (pageWidth - textWidth) / 2;
+      doc.text(text, x, y);
+    };
+
+    // Helper function to add dashed line
+    const addDashedLine = (y: number) => {
+      // Draw dashed line using small segments
+      const dashWidth = 1;
+      const gapWidth = 1;
+      let x = leftMargin;
+      while (x < pageWidth - leftMargin) {
+        doc.line(x, y, Math.min(x + dashWidth, pageWidth - leftMargin), y);
+        x += dashWidth + gapWidth;
+      }
+    };
+
+    // Header
+    doc.setFont('helvetica', 'bold');
+    addCenteredText('MANAGE TOKO', yPos, 10);
+    yPos += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    addCenteredText('Sistem Manajemen Toko', yPos);
+    yPos += 4;
+    addDashedLine(yPos);
+    yPos += 3;
+
+    // Transaction Info
+    doc.setFontSize(7);
+    doc.text(`No: #${transaction.id}`, leftMargin, yPos);
+    yPos += 3;
+    doc.text(`Tanggal: ${formattedDate}`, leftMargin, yPos);
+    yPos += 3;
+    doc.text(`Waktu: ${formattedTime}`, leftMargin, yPos);
+    yPos += 3;
+    doc.text(`Kasir: ${transaction.cashierName}`, leftMargin, yPos);
+    yPos += 3;
+    const paymentMethod = transaction.paymentMethod === 'cash' ? 'Tunai' : 
+                         transaction.paymentMethod === 'card' ? 'Kartu' : 'Transfer';
+    doc.text(`Bayar: ${paymentMethod}`, leftMargin, yPos);
+    yPos += 3;
+    addDashedLine(yPos);
+    yPos += 3;
+
+    // Items
+    doc.setFontSize(7);
+    (transaction.items || []).forEach(item => {
+      // Product name (wrapped if too long)
+      doc.setFont('helvetica', 'bold');
+      const productNameLines = doc.splitTextToSize(item.productName, pageWidth - 6);
+      doc.text(productNameLines, leftMargin, yPos);
+      yPos += productNameLines.length * 3;
+      
+      // Quantity x Price = Total
+      doc.setFont('helvetica', 'normal');
+      const itemDetail = `${item.quantity} x ${formatCurrency(item.price)}`;
+      const itemTotal = formatCurrency(item.total);
+      doc.text(itemDetail, leftMargin, yPos);
+      
+      const totalWidth = doc.getTextWidth(itemTotal);
+      doc.text(itemTotal, pageWidth - leftMargin - totalWidth, yPos);
+      yPos += 4;
+    });
+
+    addDashedLine(yPos);
+    yPos += 3;
+
+    // Totals
+    doc.setFontSize(7);
+    const subtotalLabel = 'Subtotal:';
+    const subtotalValue = formatCurrency(transaction.subtotal);
+    doc.text(subtotalLabel, leftMargin, yPos);
+    doc.text(subtotalValue, pageWidth - leftMargin - doc.getTextWidth(subtotalValue), yPos);
+    yPos += 3;
+
+    if (transaction.tax) {
+      const taxLabel = 'Pajak:';
+      const taxValue = formatCurrency(transaction.tax);
+      doc.text(taxLabel, leftMargin, yPos);
+      doc.text(taxValue, pageWidth - leftMargin - doc.getTextWidth(taxValue), yPos);
+      yPos += 3;
+    }
+
+    if (transaction.discount) {
+      const discountLabel = 'Diskon:';
+      const discountValue = `-${formatCurrency(transaction.discount)}`;
+      doc.text(discountLabel, leftMargin, yPos);
+      doc.text(discountValue, pageWidth - leftMargin - doc.getTextWidth(discountValue), yPos);
+      yPos += 3;
+    }
+
+    // Grand Total
+    yPos += 1;
+    doc.setLineWidth(0.3);
+    doc.line(leftMargin, yPos - 1, pageWidth - leftMargin, yPos - 1);
+    yPos += 2;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    const totalLabel = 'TOTAL:';
+    const totalValue = formatCurrency(transaction.total);
+    doc.text(totalLabel, leftMargin, yPos);
+    doc.text(totalValue, pageWidth - leftMargin - doc.getTextWidth(totalValue), yPos);
+    yPos += 5;
+
+    // Footer
+    addDashedLine(yPos);
+    yPos += 3;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    addCenteredText('Terima kasih atas kunjungan Anda!', yPos);
+    yPos += 3;
+    addCenteredText('Barang yang sudah dibeli', yPos);
+    yPos += 2.5;
+    addCenteredText('tidak dapat dikembalikan', yPos);
+
+    // Save PDF
+    const fileName = `Kwitansi_#${transaction.id}_${formattedDate.replace(/\//g, '-')}.pdf`;
+    doc.save(fileName);
   };
 
   return (
     <button
-      onClick={handlePrint}
+      onClick={handleDownload}
       className="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50 rounded-lg transition-all border border-green-200"
-      title="Cetak Nota"
+      title="Download Kwitansi PDF"
     >
-      🖨️ Cetak
+      📥 PDF
     </button>
   );
-}
-
-function generateReceiptHTML(transaction: Transaction): string {
-  const date = new Date(transaction.date);
-  const formattedDate = date.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-  const formattedTime = date.toLocaleTimeString('id-ID');
-
-  // Print version with proper print styles
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nota #${transaction.id}</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Courier New', monospace;
-      padding: 20px;
-      max-width: 80mm;
-      margin: 0 auto;
-    }
-    .receipt {
-      border: 1px dashed #000;
-      padding: 10px;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 10px;
-      border-bottom: 1px dashed #000;
-      padding-bottom: 10px;
-    }
-    .store-name {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .store-info {
-      font-size: 11px;
-    }
-    .transaction-info {
-      font-size: 11px;
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-      border-bottom: 1px dashed #000;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 3px;
-    }
-    .items {
-      margin-bottom: 10px;
-      border-bottom: 1px dashed #000;
-      padding-bottom: 10px;
-    }
-    .item {
-      margin-bottom: 8px;
-      font-size: 11px;
-    }
-    .item-name {
-      font-weight: bold;
-    }
-    .item-detail {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 2px;
-    }
-    .totals {
-      font-size: 11px;
-      margin-bottom: 10px;
-    }
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-    }
-    .grand-total {
-      font-size: 14px;
-      font-weight: bold;
-      margin-top: 5px;
-      padding-top: 5px;
-      border-top: 1px solid #000;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 11px;
-      border-top: 1px dashed #000;
-      padding-top: 10px;
-    }
-    @media print {
-      body {
-        padding: 0;
-      }
-      .receipt {
-        border: none;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="receipt">
-    <div class="header">
-      <div class="store-name">MANAGE TOKO</div>
-      <div class="store-info">Sistem Manajemen Toko</div>
-    </div>
-    
-    <div class="transaction-info">
-      <div class="info-row">
-        <span>No. Transaksi:</span>
-        <strong>#${transaction.id}</strong>
-      </div>
-      <div class="info-row">
-        <span>Tanggal:</span>
-        <span>${formattedDate}</span>
-      </div>
-      <div class="info-row">
-        <span>Waktu:</span>
-        <span>${formattedTime}</span>
-      </div>
-      <div class="info-row">
-        <span>Kasir:</span>
-        <span>${transaction.cashierName}</span>
-      </div>
-      <div class="info-row">
-        <span>Pembayaran:</span>
-        <span>${transaction.paymentMethod === 'cash' ? 'Tunai' : transaction.paymentMethod === 'card' ? 'Kartu' : 'Transfer'}</span>
-      </div>
-    </div>
-    
-    <div class="items">
-      ${(transaction.items || []).map(item => `
-        <div class="item">
-          <div class="item-name">${item.productName}</div>
-          <div class="item-detail">
-            <span>${item.quantity} x ${formatCurrency(item.price)}</span>
-            <strong>${formatCurrency(item.total)}</strong>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-    
-    <div class="totals">
-      <div class="total-row">
-        <span>Subtotal:</span>
-        <span>${formatCurrency(transaction.subtotal)}</span>
-      </div>
-      ${transaction.tax ? `
-      <div class="total-row">
-        <span>Pajak:</span>
-        <span>${formatCurrency(transaction.tax)}</span>
-      </div>
-      ` : ''}
-      ${transaction.discount ? `
-      <div class="total-row">
-        <span>Diskon:</span>
-        <span>-${formatCurrency(transaction.discount)}</span>
-      </div>
-      ` : ''}
-      <div class="total-row grand-total">
-        <span>TOTAL:</span>
-        <strong>${formatCurrency(transaction.total)}</strong>
-      </div>
-    </div>
-    
-    <div class="footer">
-      <div>Terima kasih atas kunjungan Anda!</div>
-      <div>Barang yang sudah dibeli tidak dapat dikembalikan</div>
-    </div>
-  </div>
-</body>
-</html>
-  `;
 }
